@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiRequest, customerTicketStore } from '../src/api/client';
 
@@ -42,6 +43,10 @@ describe('frontend API utilities', () => {
       message: 'Too many requests, please try again later.',
       status: 429,
     });
+  });
+  it('wraps unbroken customer messages inside the Staff Admin queue card', () => {
+    const css = readFileSync(`${process.cwd()}/src/styles.css`, 'utf8');
+    expect(css).toMatch(/\.customer-info p\s*\{[^}]*overflow-wrap:\s*anywhere;/s);
   });
   it('stores each customer ticket by queue without leaking into cookies', () => {
     customerTicketStore.save('q-one', { leaveToken: 'opaque', customerId: 2 });
