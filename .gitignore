@@ -1,0 +1,12 @@
+node_modules/
+dist/
+dist-server/
+data/*
+!data/.gitkeep
+.env
+.hermes/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.tsbuildinfo
+npm-debug.log*
