@@ -1,19 +1,39 @@
-name: queue-app-node
+name: nextq
 
 services:
-  queueflow:
-    build: .
-    container_name: queueflow
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: nextq-backend
     restart: unless-stopped
-    env_file: .env
-    ports:
-      - "127.0.0.1:8088:8088"
+    env_file: ${NEXTQ_ENV_FILE:-.env}
+    expose:
+      - '8088'
     volumes:
-      - queueflow_data:/app/data
+      - nextq_data:/app/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+    container_name: nextq-frontend
+    restart: unless-stopped
+    environment:
+      BACKEND_URL: http://backend:8088
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:8088:8080'
     security_opt:
       - no-new-privileges:true
     cap_drop:
       - ALL
 
 volumes:
-  queueflow_data:
+  nextq_data:
