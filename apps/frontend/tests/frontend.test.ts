@@ -28,6 +28,21 @@ describe('frontend API utilities', () => {
     );
     await expect(apiRequest('/api/x')).rejects.toThrow('Invalid request');
   });
+  it('preserves HTTP status on API errors', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: 'Too many requests, please try again later.' }), {
+          status: 429,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    );
+    await expect(apiRequest('/api/x')).rejects.toMatchObject({
+      message: 'Too many requests, please try again later.',
+      status: 429,
+    });
+  });
   it('stores each customer ticket by queue without leaking into cookies', () => {
     customerTicketStore.save('q-one', { leaveToken: 'opaque', customerId: 2 });
     expect(customerTicketStore.load('q-one')).toEqual({ leaveToken: 'opaque', customerId: 2 });

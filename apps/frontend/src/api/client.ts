@@ -3,6 +3,16 @@ export interface TicketRecord {
   customerId: number;
 }
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
@@ -14,7 +24,11 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   const data = response.headers.get('content-type')?.includes('application/json')
     ? ((await response.json()) as Record<string, unknown>)
     : {};
-  if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Request failed');
+  if (!response.ok)
+    throw new ApiError(
+      typeof data.error === 'string' ? data.error : 'Request failed',
+      response.status,
+    );
   return data as T;
 }
 

@@ -1,10 +1,14 @@
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router';
-import { apiRequest, customerTicketStore } from '../api/client';
+import { ApiError, apiRequest, customerTicketStore } from '../api/client';
 import { Card, ErrorMessage, Shell } from '../components/Shell';
 import { EventBrand, LifecycleStatus } from '../components/EventBrand';
 import type { QueueInfo, TicketStatus } from '../types';
 import { useAppI18n } from '../i18n/context';
+
+function requestErrorKey(error: unknown, fallback: string) {
+  return error instanceof ApiError && error.status === 429 ? 'errors.rateLimited' : fallback;
+}
 
 export function CustomerPage() {
   const { queueId = '' } = useParams();
@@ -18,8 +22,8 @@ export function CustomerPage() {
   const loadQueue = useCallback(async () => {
     try {
       setQueue(await apiRequest<QueueInfo>(`/api/queues/${queueId}`));
-    } catch {
-      setError('errors.queueNotFound');
+    } catch (requestError) {
+      setError(requestErrorKey(requestError, 'errors.queueNotFound'));
     }
   }, [queueId]);
 
@@ -99,8 +103,8 @@ export function CustomerPage() {
       });
       setTicket(joined);
       setQueue(current => (current ? { ...current, waitingCount: joined.waitingCount } : current));
-    } catch {
-      setError('errors.joinFailed');
+    } catch (requestError) {
+      setError(requestErrorKey(requestError, 'errors.joinFailed'));
     } finally {
       setBusy(false);
     }
@@ -118,8 +122,8 @@ export function CustomerPage() {
       customerTicketStore.remove(queueId);
       setTicket(null);
       await loadQueue();
-    } catch {
-      setError('errors.leaveFailed');
+    } catch (requestError) {
+      setError(requestErrorKey(requestError, 'errors.leaveFailed'));
     } finally {
       setBusy(false);
     }

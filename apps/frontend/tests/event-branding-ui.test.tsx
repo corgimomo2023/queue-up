@@ -78,6 +78,30 @@ describe('event branding and lifecycle UI', () => {
     expect(screen.getByRole('button', { name: 'Join queue' })).toBeInTheDocument();
   });
 
+  it('shows a retry message instead of queue not found when joining is rate limited', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_input: RequestInfo | URL, init?: RequestInit) =>
+        init?.method === 'POST'
+          ? response({ error: 'Too many requests, please try again later.' }, 429)
+          : response({ ...brand, ...period, waitingCount: 0 }),
+      ),
+    );
+    render(
+      <MemoryRouter initialEntries={['/q/summer-show']}>
+        <Routes>
+          <Route path="/q/:queueId" element={<CustomerPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    fireEvent.change(await screen.findByLabelText('Your name'), { target: { value: 'Alan' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Join queue' }));
+    expect(
+      await screen.findByText('Too many requests. Please try again shortly.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Queue not found')).not.toBeInTheDocument();
+  });
+
   it('presents branded scheduled public state with exact HKT opening and no queue action', async () => {
     vi.stubGlobal(
       'fetch',

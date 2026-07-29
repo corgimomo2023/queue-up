@@ -43,6 +43,7 @@ const zhTW = {
   errors: {
     accessDenied: '存取被拒',
     queueNotFound: '找不到隊伍',
+    rateLimited: '要求過於頻繁，請稍後再試。',
     loadDashboard: '無法載入控制台',
     actionFailed: '操作失敗',
     joinFailed: '無法加入隊伍',

@@ -74,6 +74,7 @@ export async function createApp(options: AppOptions): Promise<AppContext> {
       rateLimit({
         windowMs: RateLimit.WindowMilliseconds,
         limit: RateLimit.ApiRequestsPerWindow,
+        skip: req => ['GET', 'HEAD', 'OPTIONS'].includes(req.method),
         standardHeaders: 'draft-8',
         legacyHeaders: false,
       }),

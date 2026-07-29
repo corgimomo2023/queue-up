@@ -43,6 +43,7 @@ const enUS = {
   errors: {
     accessDenied: 'Access denied',
     queueNotFound: 'Queue not found',
+    rateLimited: 'Too many requests. Please try again shortly.',
     loadDashboard: 'Could not load dashboard',
     actionFailed: 'Action failed',
     joinFailed: 'Could not join queue',

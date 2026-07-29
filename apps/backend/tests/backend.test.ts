@@ -53,6 +53,20 @@ describe('health and queue creation', () => {
     expect(res.body).toEqual({ status: 'ok' });
     expect(JSON.stringify(res.body)).not.toContain(EMAIL);
   });
+  it('does not rate limit safe queue reads used by customers behind shared NAT', async () => {
+    await ctx.close();
+    ctx = await createApp({
+      dbPath,
+      sessionSecret: 'test-secret-at-least-32-characters!!',
+      seedEmail: EMAIL,
+      secureCookie: true,
+      rateLimit: true,
+      superAdminKey: ADMIN_KEY,
+    });
+    for (let requestNumber = 0; requestNumber < 201; requestNumber += 1) {
+      await request(ctx.app).get('/api/queues/test-demo-t7dn').expect(200);
+    }
+  });
   it('migrates existing event data with a password hash column without data loss', async () => {
     await ctx.close();
     rmSync(dbPath, { force: true });
