@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CustomerPage } from '../src/pages/CustomerPage';
+import { customerTicketStore } from '../src/api/client';
 import { VendorPage } from '../src/pages/VendorPage';
 import { QueuesModule } from '../src/features/admin/modules/QueuesModule';
 import type { SuperAdminOverview } from '../src/types';
@@ -100,6 +101,45 @@ describe('event branding and lifecycle UI', () => {
       await screen.findByText('Too many requests. Please try again shortly.'),
     ).toBeInTheDocument();
     expect(screen.queryByText('Queue not found')).not.toBeInTheDocument();
+  });
+
+  it('keeps the saved customer ticket when status refresh fails at the network', async () => {
+    const savedTicket = { customerId: 42, leaveToken: 'keep-this-ticket' };
+    customerTicketStore.save(brand.queueId, savedTicket);
+    const statusFailure = new TypeError('Failed to fetch');
+    const fetchMock = vi.fn((input: RequestInfo | URL) =>
+      String(input).includes('/status?token=')
+        ? Promise.reject(statusFailure)
+        : response({ ...brand, ...period, waitingCount: 1 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal(
+      'EventSource',
+      class {
+        addEventListener() {}
+        close() {}
+      },
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/q/summer-show']}>
+        <Routes>
+          <Route path="/q/:queueId" element={<CustomerPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/status?token='),
+        expect.anything(),
+      ),
+    );
+    expect(customerTicketStore.load(brand.queueId)).toEqual(savedTicket);
+    expect(
+      screen.getByText('We could not update your ticket. Your place is safe and we will retry.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Join queue' })).not.toBeInTheDocument();
   });
 
   it('presents branded scheduled public state with exact HKT opening and no queue action', async () => {

@@ -44,6 +44,7 @@ const zhTW = {
     accessDenied: '存取被拒',
     queueNotFound: '找不到隊伍',
     rateLimited: '要求過於頻繁，請稍後再試。',
+    ticketRefreshFailed: '暫時未能更新你的票號；排隊位置仍然保留，系統會自動重試。',
     loadDashboard: '無法載入控制台',
     actionFailed: '操作失敗',
     joinFailed: '無法加入隊伍',
@@ -101,6 +102,7 @@ const zhTW = {
   },
   customer: {
     loading: '正在載入隊伍…',
+    recoveringTicket: '正在恢復你的票號…',
     queue: '顧客隊伍',
     queueOpens: '隊伍將於 {date}（香港時間）開放',
     scheduledHint: '目前尚未開放加入，請於開放時間後再返回。',

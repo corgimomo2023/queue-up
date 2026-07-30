@@ -44,6 +44,7 @@ const enUS = {
     accessDenied: 'Access denied',
     queueNotFound: 'Queue not found',
     rateLimited: 'Too many requests. Please try again shortly.',
+    ticketRefreshFailed: 'We could not update your ticket. Your place is safe and we will retry.',
     loadDashboard: 'Could not load dashboard',
     actionFailed: 'Action failed',
     joinFailed: 'Could not join queue',
@@ -104,6 +105,7 @@ const enUS = {
   },
   customer: {
     loading: 'Loading queue…',
+    recoveringTicket: 'Restoring your ticket…',
     queue: 'Customer queue',
     queueOpens: 'Queue opens {date} HKT',
     scheduledHint: 'Joining is not available yet. Return after the opening time.',

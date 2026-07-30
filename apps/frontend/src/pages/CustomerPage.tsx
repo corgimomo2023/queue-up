@@ -10,6 +10,10 @@ function requestErrorKey(error: unknown, fallback: string) {
   return error instanceof ApiError && error.status === 429 ? 'errors.rateLimited' : fallback;
 }
 
+function shouldDiscardTicket(error: unknown) {
+  return error instanceof ApiError && [401, 404, 410].includes(error.status);
+}
+
 export function CustomerPage() {
   const { queueId = '' } = useParams();
   const { t } = useAppI18n();
@@ -35,10 +39,15 @@ export function CustomerPage() {
         `/api/queues/${queueId}/status?token=${encodeURIComponent(saved.leaveToken)}`,
       );
       setTicket(status);
+      setError('');
       setQueue(current => (current ? { ...current, waitingCount: status.waitingCount } : current));
-    } catch {
-      customerTicketStore.remove(queueId);
-      setTicket(null);
+    } catch (requestError) {
+      if (shouldDiscardTicket(requestError)) {
+        customerTicketStore.remove(queueId);
+        setTicket(null);
+        return;
+      }
+      setError('errors.ticketRefreshFailed');
     }
   }, [queueId]);
 
@@ -129,6 +138,8 @@ export function CustomerPage() {
     }
   }
 
+  const hasSavedTicket = Boolean(customerTicketStore.load(queueId));
+
   if (!queue) {
     return (
       <Shell>
@@ -218,6 +229,12 @@ export function CustomerPage() {
             >
               {t('customer.leave')}
             </button>
+          </Card>
+        ) : hasSavedTicket ? (
+          <Card className="ticket-card">
+            <p className="eyebrow">{t('customer.position')}</p>
+            <h2>{t('customer.recoveringTicket')}</h2>
+            <ErrorMessage message={error ? t(error) : ''} />
           </Card>
         ) : (
           <Card>
