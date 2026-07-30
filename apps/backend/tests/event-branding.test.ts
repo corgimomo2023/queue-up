@@ -88,11 +88,15 @@ describe('event branding API', () => {
     assetDir = join(root, 'assets');
     const staticDir = join(root, 'static');
     mkdirSync(staticDir);
-    writeFileSync(join(staticDir, 'index.html'), '<!doctype html><title>SPA</title>');
+    writeFileSync(
+      join(staticDir, 'index.html'),
+      '<!doctype html><html><head><title>SPA</title></head><body></body></html>',
+    );
     context = await createApp({
       dbPath: join(root, 'queue.sqlite'),
       assetDir,
       staticDir,
+      publicOrigin: 'https://queue.example',
       sessionSecret: SESSION_SECRET,
       superAdminKey: ADMIN_KEY,
       secureCookie: false,

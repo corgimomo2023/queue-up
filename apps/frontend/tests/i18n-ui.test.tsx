@@ -13,7 +13,7 @@ function translationKeys(value: unknown, prefix = ''): string[] {
   );
 }
 
-describe('NextQ internationalization', () => {
+describe('Easy Queue internationalization', () => {
   afterEach(() => {
     cleanup();
     localStorage.clear();
@@ -98,6 +98,15 @@ describe('NextQ internationalization', () => {
     ];
 
     for (const term of disallowed) expect(copy, `disallowed wording: ${term}`).not.toContain(term);
+  });
+
+  it('uses the Easy Queue brand in both locale resources', () => {
+    const english = readFileSync('src/i18n/en-US.ts', 'utf8');
+    const chinese = readFileSync('src/i18n/zh-HK.ts', 'utf8');
+    expect(english).toContain('Easy Queue');
+    expect(chinese).toContain('Easy Queue');
+    expect(english).not.toContain('NextQ');
+    expect(chinese).not.toContain('NextQ');
   });
 
   it('keeps English and Hong Kong Chinese translation keys in sync', () => {

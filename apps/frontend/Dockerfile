@@ -11,6 +11,6 @@ RUN npm run build --workspace=@nextq/frontend
 FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
 ENV BACKEND_URL=http://backend:8088 NGINX_ENVSUBST_FILTER=^BACKEND_URL$
 COPY apps/frontend/default.conf.template /etc/nginx/templates/default.conf.template
-COPY --from=build /app/apps/frontend/dist /usr/share/nginx/html
+COPY --chown=nginx:nginx --from=build /app/apps/frontend/dist /usr/share/nginx/html
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 CMD wget -q -O /dev/null http://127.0.0.1:8080/

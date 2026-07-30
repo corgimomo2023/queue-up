@@ -198,7 +198,7 @@ export function VendorPage() {
       <Shell>
         <div className="narrow">
           <Card>
-            <div className="lock-mark">N</div>
+            <div className="lock-mark">EQ</div>
             <p className="eyebrow">{t('staff.protectedEvent')}</p>
             <h1>{t('staff.access')}</h1>
             <p className="muted">{t('staff.passwordHint')}</p>

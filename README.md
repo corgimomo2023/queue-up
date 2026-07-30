@@ -1,4 +1,4 @@
-# NextQ
+# Easy Queue
 
 Production event queue for MEGABOX Hong Kong, implemented as an npm-workspaces monorepo with Node.js 22.22+, Express, TypeScript, React/Vite, TypeORM, SQLite and SSE.
 
@@ -59,6 +59,7 @@ Required backend values:
 
 - `SESSION_SECRET`: random 32+ character value
 - `SUPER_ADMIN_KEY`: independent random 32+ character Vendor Admin key
+- `PUBLIC_ORIGIN`: trusted public HTTP(S) origin, for example `https://queue.example.com`; paths, query strings, fragments and credentials are rejected
 - `QUEUEFLOW_SEED_EMAIL`: optional legacy initial Staff Admin credential
 - `QUEUEFLOW_SEED_PHONE`: optional legacy initial Staff Admin credential
 - `PORT`: backend port, normally `8088`
@@ -80,7 +81,7 @@ Compose starts two services:
 - `frontend`: Nginx serves the compiled SPA on `127.0.0.1:8088` and proxies backend routes. Its upstream is configurable through `BACKEND_URL`.
 - `backend`: Express serves the API and owns the persistent `nextq_data` volume.
 
-Keeping browser traffic same-origin preserves the secure session-cookie model. The two images can later be deployed on different hosts as long as a gateway routes `/api`, `/health`, and `/event-assets` from the frontend origin to the backend.
+Keeping browser traffic same-origin preserves the secure session-cookie model. The two images can later be deployed on different hosts as long as a gateway routes `/api`, `/health`, `/event-assets`, and `/q` from the frontend origin to the backend.
 
 ## Backend architecture
 
@@ -101,9 +102,18 @@ Keeping browser traffic same-origin preserves the secure session-cookie model. T
 
 ## Frontend localization
 
-- Supported locales: `en-US` and `zh-TW` via `i18next` and `react-i18next`.
-- The locale is stored under `nextq-locale`; first visit falls back to the browser language.
+- Supported locales: `en-US` and `zh-HK` via `i18next` and `react-i18next`.
+- The locale is stored under `nextq-locale`; the legacy storage key is intentionally retained so existing visitors keep their language setting.
+- A saved `zh-TW` value is migrated to `zh-HK`; first visit otherwise falls back to the browser language.
 - Database-backed event and customer content is displayed without translation.
+
+## Install manifest and link previews
+
+- `/manifest.webmanifest` describes the default Easy Queue application.
+- Every public customer link at `/q/:queueId` is served with event-specific Open Graph and Twitter metadata in the initial HTML response. WhatsApp, Signal and other preview crawlers therefore receive the event name, description and uploaded logo without executing JavaScript.
+- `/q/:queueId/manifest.webmanifest` uses the same event name and description for installation.
+- The frontend Nginx proxy sends `/q/*` to the backend, which injects event metadata into the same built SPA shell used by the browser.
+- Archived or unknown events return `404` without exposing their metadata.
 
 ## Notification contract
 

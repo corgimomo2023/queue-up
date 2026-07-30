@@ -63,7 +63,7 @@ const enUS = {
       'Event details were saved, but the logo could not be uploaded. Try again from Edit event.',
   },
   home: {
-    eyebrow: 'NextQ · Event operations',
+    eyebrow: 'Easy Queue · Event operations',
     title: 'Staff sign-in',
     intro: 'Enter the Event ID and password provided by your Event Admin.',
     eventIdPlaceholder: 'e.g. megabox-summer-ab12',
@@ -284,7 +284,7 @@ const enUS = {
     logoHint: 'PNG, JPEG or WebP, up to 2 MB.',
     removeLogo: 'Remove logo',
     staffPassword: 'Staff password',
-    passwordHint: 'Staff sign in to NextQ using the generated Event ID and this password.',
+    passwordHint: 'Staff sign in to Easy Queue using the generated Event ID and this password.',
     accessPeriod: 'Event access period',
     eventStart: 'Start time',
     startNow: 'Start now',

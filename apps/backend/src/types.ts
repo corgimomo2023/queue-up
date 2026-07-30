@@ -17,6 +17,7 @@ export interface AppOptions {
   secureCookie?: boolean;
   rateLimit?: boolean;
   staticDir?: string;
+  publicOrigin?: string;
   assetDir?: string;
   now?: () => Date;
 }

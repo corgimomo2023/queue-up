@@ -1,11 +1,11 @@
-# NextQ design sources
+# Easy Queue design sources
 
 This directory contains editable pen.dev design sources and rendered previews.
 
 ## Files
 
-- `nextq-flow.pen` — editable pen.dev document using the public `.pen` v2.14 JSON schema
-- `nextq-flow-preview.png` — rendered overview for review without pen.dev
+- `easy-queue-flow.pen` — editable pen.dev document using the public `.pen` v2.14 JSON schema
+- `easy-queue-flow-preview.png` — rendered overview for review without pen.dev
 
 The design covers two product surfaces:
 
@@ -16,7 +16,7 @@ It follows the production frontend tokens in `apps/frontend/src/styles.css`, inc
 
 ## Open and edit
 
-Open `nextq-flow.pen` with the pen.dev desktop app or VS Code/Cursor extension.
+Open `easy-queue-flow.pen` with the pen.dev desktop app or VS Code/Cursor extension.
 
 For headless use, install and authenticate the official CLI:
 
@@ -28,8 +28,8 @@ pen login
 Render the checked-in preview:
 
 ```bash
-pen --in designs/nextq-flow.pen \
-  --export designs/nextq-flow-preview.png \
+pen --in designs/easy-queue-flow.pen \
+  --export designs/easy-queue-flow-preview.png \
   --export-scale 1
 ```
 

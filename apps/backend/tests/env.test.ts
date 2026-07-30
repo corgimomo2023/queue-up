@@ -14,6 +14,7 @@ describe('startup environment', () => {
     vi.stubEnv('DATA_DIR', '/tmp/nextq');
     vi.stubEnv('SESSION_SECRET', VALID_SECRET);
     vi.stubEnv('SUPER_ADMIN_KEY', VALID_SECRET);
+    vi.stubEnv('PUBLIC_ORIGIN', 'https://queue.example/');
     vi.stubEnv('QUEUEFLOW_SEED_EMAIL', 'owner@example.test');
     vi.stubEnv('QUEUEFLOW_SEED_PHONE', '');
 
@@ -25,6 +26,7 @@ describe('startup environment', () => {
       dataDir: '/tmp/nextq',
       sessionSecret: VALID_SECRET,
       superAdminKey: VALID_SECRET,
+      publicOrigin: 'https://queue.example',
       seedEmail: 'owner@example.test',
       seedPhone: undefined,
       secureCookie: true,
@@ -36,9 +38,10 @@ describe('startup environment', () => {
     vi.stubEnv('PORT', '70000');
     vi.stubEnv('SESSION_SECRET', 'short');
     vi.stubEnv('SUPER_ADMIN_KEY', VALID_SECRET);
+    vi.stubEnv('PUBLIC_ORIGIN', 'https://queue.example/path');
 
     await expect(import('../src/config/env')).rejects.toThrow(
-      /Invalid environment configuration:.*PORT:.*SESSION_SECRET:/,
+      /Invalid environment configuration:.*PORT:.*SESSION_SECRET:.*PUBLIC_ORIGIN:/,
     );
   });
 });

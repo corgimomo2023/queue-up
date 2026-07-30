@@ -14,7 +14,7 @@ const json = (body: unknown) =>
   );
 const indexHtml = readFileSync('index.html', 'utf8');
 
-describe('NextQ wording and simple actor UI', () => {
+describe('Easy Queue wording and simple actor UI', () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
@@ -27,14 +27,41 @@ describe('NextQ wording and simple actor UI', () => {
       </MemoryRouter>,
     );
     expect(screen.getByRole('heading', { name: 'Staff sign-in' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'N NextQ' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'EQ Easy Queue' })).toBeInTheDocument();
     expect(screen.getByText('© 2026 Gallops Digital. All rights reserved.')).toBeInTheDocument();
-    expect(indexHtml).toContain('<title>NextQ</title>');
+    expect(indexHtml).toContain('<title>Easy Queue</title>');
+    expect(indexHtml).toContain('<link rel="manifest" href="/manifest.webmanifest" />');
+    expect(indexHtml).toContain('<meta property="og:title" content="Easy Queue" />');
+    expect(indexHtml).toContain(
+      '<meta property="og:description" content="A simple event queue with live position updates." />',
+    );
     expect(screen.getByLabelText('Event ID')).toBeInTheDocument();
     expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'password');
     expect(screen.queryByRole('link', { name: 'Event Admin' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /create/i })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Business name')).not.toBeInTheDocument();
+  });
+
+  it('ships an installable Easy Queue manifest', () => {
+    const manifest = JSON.parse(readFileSync('public/manifest.webmanifest', 'utf8')) as Record<
+      string,
+      unknown
+    >;
+    expect(manifest).toMatchObject({
+      name: 'Easy Queue',
+      short_name: 'Easy Queue',
+      description: 'A simple event queue with live position updates.',
+      start_url: '/',
+      display: 'standalone',
+      background_color: '#fffaf5',
+      theme_color: '#ea641e',
+    });
+    expect(manifest.icons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ src: '/favicon-192.png', sizes: '192x192' }),
+        expect.objectContaining({ src: '/favicon-512.png', sizes: '512x512' }),
+      ]),
+    );
   });
 
   it('presents the super admin as Event Admin and exposes event management', async () => {

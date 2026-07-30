@@ -62,7 +62,7 @@ const zhHK = {
     logoUploadAfterSave: '活動資料已儲存，但標誌未能上載。你可在編輯活動時重試。',
   },
   home: {
-    eyebrow: 'NextQ · 活動營運',
+    eyebrow: 'Easy Queue · 活動營運',
     title: '工作人員登入',
     intro: '請輸入主辦方管理員提供的活動編號及密碼。',
     eventIdPlaceholder: '例如 megabox-summer-ab12',
@@ -278,7 +278,7 @@ const zhHK = {
     logoHint: '支援 PNG、JPEG 或 WebP，最大 2 MB。',
     removeLogo: '移除標誌',
     staffPassword: '工作人員密碼',
-    passwordHint: '工作人員使用系統產生的活動編號及此密碼登入 NextQ。',
+    passwordHint: '工作人員使用系統產生的活動編號及此密碼登入 Easy Queue。',
     accessPeriod: '活動開放期',
     eventStart: '開始時間',
     startNow: '立即開始',

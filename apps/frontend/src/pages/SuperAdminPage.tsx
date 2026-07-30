@@ -101,7 +101,7 @@ export function SuperAdminPage() {
       <Shell>
         <div className="narrow">
           <Card className="admin-login">
-            <div className="lock-mark">N</div>
+            <div className="lock-mark">EQ</div>
             <p className="eyebrow">{t('superAdmin.restricted')}</p>
             <h1>{t('superAdmin.title')}</h1>
             <p className="muted">{t('superAdmin.intro')}</p>

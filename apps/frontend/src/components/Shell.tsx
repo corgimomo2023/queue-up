@@ -9,7 +9,7 @@ export function Shell({ children, actions }: PropsWithChildren<{ actions?: React
     <div className="app-shell">
       <header className="topbar">
         <Link className="brand" to="/">
-          <span className="brand-mark">N</span>NextQ
+          <span className="brand-mark">EQ</span>Easy Queue
         </Link>
         <div className="topbar-actions">
           <LocaleSwitch />

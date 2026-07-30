@@ -11,9 +11,11 @@ const context = await createApp({
   seedEmail: env.seedEmail,
   seedPhone: env.seedPhone,
   secureCookie: env.secureCookie,
+  publicOrigin: env.publicOrigin,
+  staticDir: path.resolve(import.meta.dirname, '../public'),
 });
 const server = context.app.listen(env.port, '0.0.0.0', () =>
-  console.log(`QueueFlow listening on 0.0.0.0:${env.port.toString()}`),
+  console.log(`Easy Queue listening on 0.0.0.0:${env.port.toString()}`),
 );
 function shutdown() {
   server.close(() => {

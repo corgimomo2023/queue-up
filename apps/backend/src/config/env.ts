@@ -12,6 +12,21 @@ const optionalNonEmptyString = z.preprocess(
   z.string().min(1).optional(),
 );
 
+const publicOrigin = z
+  .url()
+  .refine(value => {
+    const url = new URL(value);
+    return (
+      (url.protocol === 'https:' || url.protocol === 'http:') &&
+      !url.username &&
+      !url.password &&
+      url.pathname === '/' &&
+      !url.search &&
+      !url.hash
+    );
+  }, 'Must be an HTTP(S) origin without credentials, path, query or fragment')
+  .transform(value => new URL(value).origin);
+
 const environmentSchema = z
   .object({
     NODE_ENV: z
@@ -21,6 +36,7 @@ const environmentSchema = z
     DATA_DIR: z.string().trim().min(1).default('/app/data'),
     SESSION_SECRET: z.string().min(Session.MinimumSecretLength),
     SUPER_ADMIN_KEY: z.string().min(Session.MinimumSecretLength),
+    PUBLIC_ORIGIN: publicOrigin,
     QUEUEFLOW_SEED_EMAIL: optionalNonEmptyString,
     QUEUEFLOW_SEED_PHONE: optionalNonEmptyString,
   })
@@ -30,6 +46,7 @@ const environmentSchema = z
     dataDir: values.DATA_DIR,
     sessionSecret: values.SESSION_SECRET,
     superAdminKey: values.SUPER_ADMIN_KEY,
+    publicOrigin: values.PUBLIC_ORIGIN,
     seedEmail: values.QUEUEFLOW_SEED_EMAIL,
     seedPhone: values.QUEUEFLOW_SEED_PHONE,
     secureCookie: values.NODE_ENV !== RuntimeMode.Test,

@@ -5,8 +5,10 @@ COPY tsconfig.base.json ./tsconfig.base.json
 COPY apps/frontend/package.json ./apps/frontend/package.json
 COPY apps/backend/package.json ./apps/backend/package.json
 RUN npm ci --no-audit --no-fund
+COPY apps/frontend ./apps/frontend
 COPY apps/backend ./apps/backend
-RUN npm run build --workspace=@nextq/backend
+RUN npm run build --workspace=@nextq/frontend \
+    && npm run build --workspace=@nextq/backend
 
 FROM node:22-bookworm-slim AS runtime
 ENV NODE_ENV=production PORT=8088 DATA_DIR=/app/data
@@ -20,6 +22,7 @@ RUN npm ci --omit=dev --workspace=@nextq/backend --include-workspace-root=false 
     && mkdir -p /app/data \
     && chown nextq:nextq /app/data
 COPY --from=build --chown=nextq:nextq /app/apps/backend/dist ./apps/backend/dist
+COPY --from=build --chown=nextq:nextq /app/apps/frontend/dist ./apps/backend/public
 USER nextq
 WORKDIR /app/apps/backend
 EXPOSE 8088

@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import helmet from 'helmet';
@@ -13,6 +13,11 @@ import { EventPeriodError } from './queue-period';
 import { vendorAdminRoutes } from './routes/vendor-admin';
 import { staffAdminRoutes } from './routes/staff-admin';
 import { customerRoutes } from './routes/customer';
+import {
+  assertInjectableShareTemplate,
+  buildEventManifest,
+  buildEventShareHtml,
+} from './social-preview';
 import type { AppContext, AppOptions } from './types';
 
 export type { AppContext, AppOptions } from './types';
@@ -45,6 +50,21 @@ export async function createApp(options: AppOptions): Promise<AppContext> {
       `SESSION_SECRET must be at least ${Session.MinimumSecretLength.toString()} characters`,
     );
   }
+
+  const staticDir = options.staticDir;
+  const publicOrigin = options.publicOrigin;
+  let indexPath: string | undefined;
+  let indexTemplate: string | undefined;
+  if (staticDir) {
+    if (!existsSync(staticDir)) throw new Error(`Static directory not found: ${staticDir}`);
+    if (!publicOrigin) {
+      throw new Error('PUBLIC_ORIGIN is required when serving the frontend');
+    }
+    indexPath = path.join(staticDir, 'index.html');
+    indexTemplate = readFileSync(indexPath, 'utf8');
+    assertInjectableShareTemplate(indexTemplate);
+  }
+
   const runtime = await createRuntime(options);
   const guards = createAccessGuards(runtime);
   const app = express();
@@ -86,12 +106,37 @@ export async function createApp(options: AppOptions): Promise<AppContext> {
   app.use(staffAdminRoutes(runtime, guards));
   app.use(customerRoutes(runtime, guards));
 
-  const staticDir = options.staticDir;
-  if (staticDir && existsSync(staticDir)) {
+  if (staticDir && indexPath && indexTemplate && publicOrigin) {
+    const publicEvent = async (queueId: string) => {
+      const queue = await runtime.getQueue(queueId);
+      return queue && !queue.removed_at ? queue : null;
+    };
+
+    app.get('/q/:queueId/manifest.webmanifest', async (req, res) => {
+      const queue = await publicEvent(req.params.queueId);
+      if (!queue) {
+        res.status(404).json({ error: 'Queue not found' });
+        return;
+      }
+      res
+        .type('application/manifest+json')
+        .set('Cache-Control', 'no-cache')
+        .json(buildEventManifest(queue));
+    });
+    app.get('/q/:queueId', async (req, res) => {
+      const queue = await publicEvent(req.params.queueId);
+      if (!queue) {
+        res.status(404).type('text/plain').send('Queue not found');
+        return;
+      }
+      res
+        .type('html')
+        .set('Cache-Control', 'no-cache')
+        .send(buildEventShareHtml(indexTemplate, queue, publicOrigin));
+    });
+
     app.use(express.static(staticDir, { index: false, maxAge: '1h' }));
-    app.get(/^(?!\/api|\/health).*/, (_req, res) =>
-      res.sendFile(path.join(staticDir, 'index.html')),
-    );
+    app.get(/^(?!\/api|\/health).*/, (_req, res) => res.sendFile(indexPath));
   }
   app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {

@@ -35,7 +35,7 @@ export function HomePage() {
     <Shell>
       <div className="narrow">
         <Card className="admin-login">
-          <div className="lock-mark">N</div>
+          <div className="lock-mark">EQ</div>
           <p className="eyebrow">{t('home.eyebrow')}</p>
           <h1>{t('home.title')}</h1>
           <p className="muted">{t('home.intro')}</p>

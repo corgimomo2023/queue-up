@@ -39,9 +39,9 @@ export function AdminShell({ children, busy, onRefresh, onLogout }: AdminShellPr
       )}
       <aside id="admin-sidebar" className={`admin-sidebar ${open ? 'open' : ''}`}>
         <div className="admin-sidebar-brand">
-          <span className="brand-mark">N</span>
+          <span className="brand-mark">EQ</span>
           <div>
-            <strong>NextQ</strong>
+            <strong>Easy Queue</strong>
             <small>{t('adminShell.vendorAdmin')}</small>
           </div>
         </div>
