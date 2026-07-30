@@ -20,7 +20,6 @@ export function CustomerPage() {
   const [queue, setQueue] = useState<QueueInfo | null>(null);
   const [ticket, setTicket] = useState<TicketStatus | null>(null);
   const [error, setError] = useState('');
-  const [calledNotification, setCalledNotification] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const loadQueue = useCallback(async () => {
@@ -67,7 +66,11 @@ export function CustomerPage() {
     source.addEventListener('update', () => void refreshTicket());
     source.addEventListener('status', () => void refreshTicket());
     source.addEventListener('queue.called', () => {
-      setCalledNotification(true);
+      setTicket(current =>
+        current
+          ? { ...current, status: 'served', position: 0, peopleAhead: 0, isNext: false }
+          : current,
+      );
       void refreshTicket();
       source.close();
     });
@@ -198,7 +201,7 @@ export function CustomerPage() {
                   ? t('customer.next')
                   : t('customer.inLine')}
             </h2>
-            {calledNotification && (
+            {ticket.status === 'served' && (
               <div className="alert" role="status">
                 <strong>{t('customer.called')}</strong>
               </div>

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CustomerPage } from '../src/pages/CustomerPage';
@@ -140,6 +140,100 @@ describe('event branding and lifecycle UI', () => {
       screen.getByText('We could not update your ticket. Your place is safe and we will retry.'),
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Join queue' })).not.toBeInTheDocument();
+  });
+
+  it('restores the called alert from the persisted served ticket status after reload', async () => {
+    customerTicketStore.save(brand.queueId, {
+      customerId: 42,
+      leaveToken: 'served-ticket',
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        String(input).includes('/status?token=')
+          ? response({
+              customerId: 42,
+              name: 'Alan',
+              status: 'served',
+              position: 0,
+              peopleAhead: 0,
+              waitingCount: 0,
+              isNext: false,
+            })
+          : response({ ...brand, ...period, waitingCount: 0 }),
+      ),
+    );
+    vi.stubGlobal(
+      'EventSource',
+      class {
+        addEventListener() {}
+        close() {}
+      },
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/q/summer-show']}>
+        <Routes>
+          <Route path="/q/:queueId" element={<CustomerPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'It is your turn. Please return to the event venue within 5 minutes for admission.',
+    );
+  });
+
+  it('shows the called alert immediately when SSE arrives even if status refresh fails', async () => {
+    customerTicketStore.save(brand.queueId, {
+      customerId: 42,
+      leaveToken: 'waiting-ticket',
+    });
+    let statusRequests = 0;
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      if (!String(input).includes('/status?token=')) {
+        return response({ ...brand, ...period, waitingCount: 1 });
+      }
+      statusRequests += 1;
+      return statusRequests === 1
+        ? response({
+            customerId: 42,
+            name: 'Alan',
+            status: 'waiting',
+            position: 1,
+            peopleAhead: 0,
+            waitingCount: 1,
+            isNext: true,
+          })
+        : Promise.reject(new TypeError('Failed to fetch'));
+    });
+    let calledListener: (() => void) | undefined;
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal(
+      'EventSource',
+      class {
+        addEventListener(type: string, listener: () => void) {
+          if (type === 'queue.called') calledListener = listener;
+        }
+        close() {}
+      },
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/q/summer-show']}>
+        <Routes>
+          <Route path="/q/:queueId" element={<CustomerPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole('heading', { name: "You're next" })).toBeInTheDocument();
+
+    await act(async () => calledListener?.());
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'It is your turn. Please return to the event venue within 5 minutes for admission.',
+    );
+    expect(customerTicketStore.load(brand.queueId)).not.toBeNull();
   });
 
   it('presents branded scheduled public state with exact HKT opening and no queue action', async () => {
