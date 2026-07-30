@@ -24,6 +24,8 @@ export type TicketStatus = {
   peopleAhead: number;
   waitingCount: number;
   isNext: boolean;
+  calledAt: string | null;
+  expiresAt: string | null;
   leaveToken?: string;
   queueStatus?: QueuePeriod;
 };

@@ -431,6 +431,20 @@ textarea {
   text-align: center;
   margin-bottom: 24px;
 }
+.connection-status {
+  display: inline-block;
+  margin: 10px 0 0;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #edf8ef;
+  color: #236032;
+  font-size: 12px;
+  font-weight: 800;
+}
+.connection-status.warning {
+  background: #fff0d8;
+  color: #814b00;
+}
 .ticket-card {
   text-align: center;
 }
@@ -485,6 +499,60 @@ textarea {
 }
 .live-note {
   margin-bottom: 24px !important;
+}
+.notification-controls {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin: 0 0 24px;
+}
+.notification-state {
+  margin: 0 !important;
+  font-size: 13px !important;
+}
+.call-banner {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #111;
+  color: #fff;
+  text-align: center;
+}
+.call-banner-content {
+  width: min(620px, 100%);
+}
+.call-banner-now {
+  margin: 0 0 12px;
+  color: #ffb000;
+  font-size: clamp(48px, 12vw, 96px);
+  font-weight: 950;
+  letter-spacing: -0.05em;
+}
+.call-banner h2 {
+  margin: 0 0 16px;
+  color: #fff;
+  font-size: clamp(40px, 9vw, 72px);
+}
+.call-banner p:not(.call-banner-now) {
+  color: #fff;
+  font-size: clamp(18px, 4vw, 26px);
+}
+.call-countdown {
+  margin: 28px 0;
+  color: #ffb000;
+  font-size: clamp(64px, 18vw, 120px);
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.button.call-banner-dismiss {
+  background: #ffb000;
+  color: #111;
+  font-size: 18px;
+  font-weight: 900;
 }
 @media (max-width: 850px) {
   main {

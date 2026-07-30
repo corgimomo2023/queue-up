@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiRequest, customerTicketStore } from '../src/api/client';
+import { reconcileTicketStatus } from '../src/ticket-reconciliation';
+import type { TicketStatus } from '../src/types';
 
 describe('frontend API utilities', () => {
   beforeEach(() => {
@@ -48,6 +50,52 @@ describe('frontend API utilities', () => {
     const css = readFileSync(`${process.cwd()}/src/styles.css`, 'utf8');
     expect(css).toMatch(/\.customer-info p\s*\{[^}]*overflow-wrap:\s*anywhere;/s);
   });
+  it('never lets a stale waiting refresh overwrite a served ticket', () => {
+    const waiting: TicketStatus = {
+      customerId: 2,
+      name: 'Alan',
+      status: 'waiting',
+      position: 1,
+      peopleAhead: 0,
+      waitingCount: 1,
+      isNext: true,
+      calledAt: null,
+      expiresAt: null,
+    };
+    const served: TicketStatus = {
+      ...waiting,
+      status: 'served',
+      position: 0,
+      waitingCount: 0,
+      isNext: false,
+      calledAt: '2026-07-30T02:00:00.000Z',
+      expiresAt: '2026-07-30T02:05:00.000Z',
+    };
+
+    expect(reconcileTicketStatus(served, waiting)).toEqual(served);
+    expect(reconcileTicketStatus(waiting, served)).toEqual(served);
+  });
+
+  it('delivers browser notifications without depending on device audio or vibration', async () => {
+    vi.resetModules();
+    const shown: string[] = [];
+    class NotificationMock {
+      static permission: NotificationPermission = 'granted';
+      readonly title: string;
+      constructor(title: string) {
+        this.title = title;
+        shown.push(title);
+      }
+    }
+    vi.stubGlobal('Notification', NotificationMock);
+    const { deliverForegroundNotification } = await import('../src/notification-preferences');
+
+    await expect(deliverForegroundNotification('It is your turn', 'Return now')).resolves.toBe(
+      undefined,
+    );
+    expect(shown).toEqual(['It is your turn']);
+  });
+
   it('stores each customer ticket by queue without leaking into cookies', () => {
     customerTicketStore.save('q-one', { leaveToken: 'opaque', customerId: 2 });
     expect(customerTicketStore.load('q-one')).toEqual({ leaveToken: 'opaque', customerId: 2 });

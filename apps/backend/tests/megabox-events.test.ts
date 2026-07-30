@@ -110,7 +110,12 @@ describe('MEGABOX event ownership and notification contract', () => {
       .get(`/api/queues/${eventId}/status`)
       .query({ token: customer.body.leaveToken })
       .expect(200)
-      .expect(({ body }) => expect(body.status).toBe('served'));
+      .expect(({ body }) => {
+        expect(body.status).toBe('served');
+        expect(body.calledAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+        expect(body.expiresAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+        expect(Date.parse(body.expiresAt) - Date.parse(body.calledAt)).toBe(5 * 60_000);
+      });
 
     await request(context.app)
       .patch(`/api/super-admin/queues/${eventId}`)
@@ -207,6 +212,21 @@ describe('MEGABOX event ownership and notification contract', () => {
     const called = await readChunk(reader);
     expect(called).toContain('event: queue.called');
     expect(called).toContain('現正輪到你，請於5分鐘到回到活動場地入場');
+    const calledData = called.split('\n').find(line => line.startsWith('data: '));
+    expect(calledData).toBeDefined();
+    if (!calledData) throw new Error('Expected queue.called data payload');
+    const calledPayload = JSON.parse(calledData.slice('data: '.length)) as {
+      calledAt?: string;
+      expiresAt?: string;
+    };
+    expect(calledPayload.calledAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(calledPayload.expiresAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    if (!calledPayload.calledAt || !calledPayload.expiresAt) {
+      throw new Error('Expected calledAt and expiresAt');
+    }
+    expect(Date.parse(calledPayload.expiresAt) - Date.parse(calledPayload.calledAt)).toBe(
+      5 * 60_000,
+    );
     expect(called).not.toContain('event: update');
     await reader.cancel();
     await request(context.app)

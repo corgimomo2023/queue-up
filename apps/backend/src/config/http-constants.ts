@@ -21,5 +21,6 @@ export const RequestLimit = {
 
 export const Realtime = {
   HeartbeatMilliseconds: 20_000,
+  CallWindowMilliseconds: 5 * 60_000,
   CalledCustomerMessage: '現正輪到你，請於5分鐘到回到活動場地入場',
 } as const;

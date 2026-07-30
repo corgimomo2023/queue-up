@@ -103,6 +103,8 @@ export async function createRuntime(options: AppOptions) {
         : 0;
     const waitingCount = await customerRepository.waitingCount(customer.queue_id);
     const peopleAhead = customer.status === CustomerStatus.Waiting ? Math.max(0, position - 1) : 0;
+    const calledAt =
+      customer.status === CustomerStatus.Served && customer.ended_at ? customer.ended_at : null;
     return {
       customerId: customer.id,
       name: customer.name,
@@ -111,6 +113,10 @@ export async function createRuntime(options: AppOptions) {
       peopleAhead,
       waitingCount,
       isNext: position === 1,
+      calledAt,
+      expiresAt: calledAt
+        ? new Date(Date.parse(calledAt) + Realtime.CallWindowMilliseconds).toISOString()
+        : null,
     };
   };
   const emit = async (slug: string, excludeCustomerId?: number): Promise<void> => {
@@ -125,11 +131,15 @@ export async function createRuntime(options: AppOptions) {
         );
     }
   };
-  const callCustomer = (slug: string, customerId: number) => {
+  const callCustomer = (slug: string, customerId: number, calledAt: string) => {
     const eventClients = clients.get(slug);
     const group = eventClients?.get(customerId);
     if (!eventClients || !group) return;
-    const data = JSON.stringify({ message: Realtime.CalledCustomerMessage });
+    const data = JSON.stringify({
+      message: Realtime.CalledCustomerMessage,
+      calledAt,
+      expiresAt: new Date(Date.parse(calledAt) + Realtime.CallWindowMilliseconds).toISOString(),
+    });
     for (const response of group) {
       response.write(`event: ${RealtimeEvent.QueueCalled}\ndata: ${data}\n\n`);
       response.end();

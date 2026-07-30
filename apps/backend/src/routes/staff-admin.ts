@@ -76,16 +76,17 @@ export function staffAdminRoutes(runtime: AppRuntime, guards: AccessGuards) {
 
   router.post('/api/vendor/:queueId/serve-next', ...guards.staffAdmin, async (req, res) => {
     const { queue } = actor<Extract<Actor, { type: typeof ActorType.StaffAdmin }>>(res);
+    const calledAt = runtime.now().toISOString();
     const customer = await runtime.services.customers.serveNext(
       queue.id,
-      runtime.now().toISOString(),
+      calledAt,
       runtime.auditFields(req),
     );
     if (!customer) {
       res.status(409).json({ error: 'No customers waiting' });
       return;
     }
-    runtime.callCustomer(queue.slug, customer.id);
+    runtime.callCustomer(queue.slug, customer.id, calledAt);
     await runtime.emit(queue.slug, customer.id);
     res.json({ customer: { customerId: customer.id, name: customer.name } });
   });

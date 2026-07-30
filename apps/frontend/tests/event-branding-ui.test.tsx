@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router';
+import { Link, MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CustomerPage } from '../src/pages/CustomerPage';
 import { customerTicketStore } from '../src/api/client';
@@ -142,7 +142,212 @@ describe('event branding and lifecycle UI', () => {
     expect(screen.queryByRole('button', { name: 'Join queue' })).not.toBeInTheDocument();
   });
 
+  it('does not revive a ticket when an older status response arrives after leaving', async () => {
+    const waitingStatus = {
+      customerId: 42,
+      name: 'Alan',
+      status: 'waiting',
+      position: 2,
+      peopleAhead: 1,
+      waitingCount: 2,
+      isNext: false,
+      calledAt: null,
+      expiresAt: null,
+    } as const;
+    customerTicketStore.save(brand.queueId, {
+      customerId: 42,
+      leaveToken: 'leaving-ticket',
+    });
+    let statusCalls = 0;
+    let resolveStaleStatus: ((value: Response) => void) | undefined;
+    const staleStatus = new Promise<Response>(resolve => {
+      resolveStaleStatus = resolve;
+    });
+    vi.stubGlobal(
+      'confirm',
+      vi.fn(() => true),
+    );
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.includes('/status?token=')) {
+          statusCalls += 1;
+          return statusCalls === 1 ? response(waitingStatus) : staleStatus;
+        }
+        if (url.includes('/customers/me') && init?.method === 'DELETE') {
+          return response({ ok: true });
+        }
+        return response({ ...brand, ...period, waitingCount: 2 });
+      }),
+    );
+    vi.stubGlobal(
+      'EventSource',
+      class {
+        addEventListener() {}
+        close() {}
+      },
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/q/summer-show']}>
+        <Routes>
+          <Route path="/q/:queueId" element={<CustomerPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const leave = await screen.findByRole('button', { name: 'Leave queue' });
+    act(() => window.dispatchEvent(new Event('online')));
+    await waitFor(() => expect(statusCalls).toBe(2));
+    fireEvent.click(leave);
+    expect(await screen.findByRole('button', { name: 'Join queue' })).toBeInTheDocument();
+
+    await act(async () => {
+      resolveStaleStatus?.(await response(waitingStatus));
+      await staleStatus;
+    });
+
+    expect(customerTicketStore.load(brand.queueId)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Join queue' })).toBeInTheDocument();
+    expect(screen.queryByText('Ticket #42')).not.toBeInTheDocument();
+  });
+
+  it('requests notification permission only after opt-in and can test the browser alert', async () => {
+    const requestPermission = vi.fn().mockResolvedValue('granted');
+    const shownNotifications: string[] = [];
+    class NotificationMock {
+      static permission: NotificationPermission = 'default';
+      static requestPermission = requestPermission;
+      readonly title: string;
+      constructor(title: string) {
+        this.title = title;
+        shownNotifications.push(title);
+      }
+    }
+    requestPermission.mockImplementation(async () => {
+      NotificationMock.permission = 'granted';
+      return 'granted';
+    });
+    vi.stubGlobal('Notification', NotificationMock);
+    customerTicketStore.save(brand.queueId, {
+      customerId: 42,
+      leaveToken: 'notification-ticket',
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        String(input).includes('/status?token=')
+          ? response({
+              customerId: 42,
+              name: 'Alan',
+              status: 'waiting',
+              position: 2,
+              peopleAhead: 1,
+              waitingCount: 2,
+              isNext: false,
+              calledAt: null,
+              expiresAt: null,
+            })
+          : response({ ...brand, ...period, waitingCount: 2 }),
+      ),
+    );
+    let calledListener: ((event: Event) => void) | undefined;
+    vi.stubGlobal(
+      'EventSource',
+      class {
+        addEventListener(name: string, listener: (event: Event) => void) {
+          if (name === 'queue.called') calledListener = listener;
+        }
+        close() {}
+      },
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/q/summer-show']}>
+        <Routes>
+          <Route path="/q/:queueId" element={<CustomerPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const enable = await screen.findByRole('button', { name: 'Notify me when it is my turn' });
+    expect(requestPermission).not.toHaveBeenCalled();
+    fireEvent.click(enable);
+    await waitFor(() => expect(requestPermission).toHaveBeenCalledOnce());
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Test alert' }));
+    await waitFor(() => {
+      expect(shownNotifications).toContain('It is your turn');
+    });
+
+    const testDismiss = screen.getByRole('button', { name: 'I am on my way' });
+    const calledAt = new Date().toISOString();
+    const expiresAt = new Date(Date.parse(calledAt) + 2 * 60_000).toISOString();
+    act(() => {
+      calledListener?.(
+        new MessageEvent('queue.called', {
+          data: JSON.stringify({ calledAt, expiresAt }),
+        }),
+      );
+    });
+
+    await waitFor(() => expect(screen.getByText(/0[12]:[0-5]\d/)).toBeInTheDocument());
+    const realDismiss = screen.getByRole('button', { name: 'I am on my way' });
+    expect(realDismiss).not.toBe(testDismiss);
+    fireEvent.click(testDismiss);
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+  });
+
+  it('does not replay foreground notifications or the full-screen banner after expiry', async () => {
+    const calledAt = new Date(Date.now() - 10 * 60_000).toISOString();
+    const expiresAt = new Date(Date.now() - 5 * 60_000).toISOString();
+    customerTicketStore.save(brand.queueId, {
+      customerId: 42,
+      leaveToken: 'expired-ticket',
+    });
+    localStorage.setItem(`nextq:notifications:${brand.queueId}`, 'enabled');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        String(input).includes('/status?token=')
+          ? response({
+              customerId: 42,
+              name: 'Alan',
+              status: 'served',
+              position: 0,
+              peopleAhead: 0,
+              waitingCount: 0,
+              isNext: false,
+              calledAt,
+              expiresAt,
+            })
+          : response({ ...brand, ...period, waitingCount: 0 }),
+      ),
+    );
+    vi.stubGlobal(
+      'EventSource',
+      class {
+        addEventListener() {}
+        close() {}
+      },
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/q/summer-show']}>
+        <Routes>
+          <Route path="/q/:queueId" element={<CustomerPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('The 5-minute return window has ended.')).toBeInTheDocument();
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  });
+
   it('restores the called alert from the persisted served ticket status after reload', async () => {
+    const calledAt = new Date().toISOString();
+    const expiresAt = new Date(Date.parse(calledAt) + 5 * 60_000).toISOString();
     customerTicketStore.save(brand.queueId, {
       customerId: 42,
       leaveToken: 'served-ticket',
@@ -159,6 +364,8 @@ describe('event branding and lifecycle UI', () => {
               peopleAhead: 0,
               waitingCount: 0,
               isNext: false,
+              calledAt,
+              expiresAt,
             })
           : response({ ...brand, ...period, waitingCount: 0 }),
       ),
@@ -182,9 +389,13 @@ describe('event branding and lifecycle UI', () => {
     expect(await screen.findByRole('status')).toHaveTextContent(
       'It is your turn. Please return to the event venue within 5 minutes for admission.',
     );
+    const banner = await screen.findByRole('alertdialog', { name: 'It is your turn' });
+    expect(banner).toHaveTextContent('05:00');
   });
 
   it('shows the called alert immediately when SSE arrives even if status refresh fails', async () => {
+    const calledAt = new Date().toISOString();
+    const expiresAt = new Date(Date.parse(calledAt) + 5 * 60_000).toISOString();
     customerTicketStore.save(brand.queueId, {
       customerId: 42,
       leaveToken: 'waiting-ticket',
@@ -207,12 +418,12 @@ describe('event branding and lifecycle UI', () => {
           })
         : Promise.reject(new TypeError('Failed to fetch'));
     });
-    let calledListener: (() => void) | undefined;
+    let calledListener: ((event: MessageEvent<string>) => void) | undefined;
     vi.stubGlobal('fetch', fetchMock);
     vi.stubGlobal(
       'EventSource',
       class {
-        addEventListener(type: string, listener: () => void) {
+        addEventListener(type: string, listener: (event: MessageEvent<string>) => void) {
           if (type === 'queue.called') calledListener = listener;
         }
         close() {}
@@ -228,12 +439,199 @@ describe('event branding and lifecycle UI', () => {
     );
     expect(await screen.findByRole('heading', { name: "You're next" })).toBeInTheDocument();
 
-    await act(async () => calledListener?.());
+    await act(async () =>
+      calledListener?.(
+        new MessageEvent('queue.called', { data: JSON.stringify({ calledAt, expiresAt }) }),
+      ),
+    );
 
     expect(await screen.findByRole('status')).toHaveTextContent(
       'It is your turn. Please return to the event venue within 5 minutes for admission.',
     );
+    expect(await screen.findByRole('alertdialog', { name: 'It is your turn' })).toHaveTextContent(
+      '05:00',
+    );
     expect(customerTicketStore.load(brand.queueId)).not.toBeNull();
+  });
+
+  it('reconnects after an SSE error and recovers a missed call from ticket status', async () => {
+    const calledAt = new Date().toISOString();
+    const expiresAt = new Date(Date.parse(calledAt) + 5 * 60_000).toISOString();
+    customerTicketStore.save(brand.queueId, {
+      customerId: 42,
+      leaveToken: 'reconnect-ticket',
+    });
+    let statusRequests = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        if (!String(input).includes('/status?token=')) {
+          return response({ ...brand, ...period, waitingCount: 1 });
+        }
+        statusRequests += 1;
+        return response(
+          statusRequests === 1
+            ? {
+                customerId: 42,
+                name: 'Alan',
+                status: 'waiting',
+                position: 1,
+                peopleAhead: 0,
+                waitingCount: 1,
+                isNext: true,
+                calledAt: null,
+                expiresAt: null,
+              }
+            : {
+                customerId: 42,
+                name: 'Alan',
+                status: 'served',
+                position: 0,
+                peopleAhead: 0,
+                waitingCount: 0,
+                isNext: false,
+                calledAt,
+                expiresAt,
+              },
+        );
+      }),
+    );
+    const listeners = new Map<string, EventListener>();
+    vi.stubGlobal(
+      'EventSource',
+      class {
+        addEventListener(type: string, listener: EventListener) {
+          listeners.set(type, listener);
+        }
+        close() {}
+      },
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/q/summer-show']}>
+        <Routes>
+          <Route path="/q/:queueId" element={<CustomerPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole('heading', { name: "You're next" })).toBeInTheDocument();
+
+    await act(async () => listeners.get('error')?.(new Event('error')));
+
+    expect(await screen.findByText('Reconnecting live updates…')).toBeInTheDocument();
+    expect(await screen.findByRole('alertdialog', { name: 'It is your turn' })).toHaveTextContent(
+      /0[45]:[0-5]\d/,
+    );
+  });
+
+  it('shows offline and background page status without discarding the ticket', async () => {
+    const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+    customerTicketStore.save(brand.queueId, {
+      customerId: 42,
+      leaveToken: 'offline-ticket',
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        String(input).includes('/status?token=')
+          ? response({
+              customerId: 42,
+              name: 'Alan',
+              status: 'waiting',
+              position: 2,
+              peopleAhead: 1,
+              waitingCount: 2,
+              isNext: false,
+              calledAt: null,
+              expiresAt: null,
+            })
+          : response({ ...brand, ...period, waitingCount: 2 }),
+      ),
+    );
+    vi.stubGlobal(
+      'EventSource',
+      class {
+        addEventListener() {}
+        close() {}
+      },
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/q/summer-show']}>
+        <Routes>
+          <Route path="/q/:queueId" element={<CustomerPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByText(
+        'You are offline. Your ticket is saved and will reconnect automatically.',
+      ),
+    ).toBeInTheDocument();
+    expect(customerTicketStore.load(brand.queueId)).not.toBeNull();
+
+    online.mockReturnValue(true);
+    visibility.mockReturnValue('hidden');
+    act(() => {
+      window.dispatchEvent(new Event('online'));
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    expect(
+      await screen.findByText('This page is in the background. Return here to check live updates.'),
+    ).toBeInTheDocument();
+  });
+
+  it('ignores a stale queue response after navigating to another event', async () => {
+    let resolveSummer: ((value: Response) => void) | undefined;
+    const delayedSummer = new Promise<Response>(resolve => {
+      resolveSummer = resolve;
+    });
+    const winterBrand = {
+      ...brand,
+      queueId: 'winter-show',
+      name: 'Winter Show',
+      logoUrl: '/event-assets/winter.webp',
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes('/api/queues/summer-show')) return delayedSummer;
+        if (url.includes('/api/queues/winter-show')) {
+          return Promise.resolve(response({ ...winterBrand, ...period, waitingCount: 0 }));
+        }
+        return Promise.resolve(response({}, 404));
+      }),
+    );
+    vi.stubGlobal(
+      'EventSource',
+      class {
+        addEventListener() {}
+        close() {}
+      },
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/q/summer-show']}>
+        <Link to="/q/winter-show">Open winter</Link>
+        <Routes>
+          <Route path="/q/:queueId" element={<CustomerPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('link', { name: 'Open winter' }));
+    expect(await screen.findByRole('heading', { name: 'Winter Show' })).toBeInTheDocument();
+
+    await act(async () => {
+      resolveSummer?.(await response({ ...brand, ...period, waitingCount: 3 }));
+      await delayedSummer;
+    });
+
+    expect(screen.getByRole('heading', { name: 'Winter Show' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Summer Show' })).not.toBeInTheDocument();
   });
 
   it('presents branded scheduled public state with exact HKT opening and no queue action', async () => {
