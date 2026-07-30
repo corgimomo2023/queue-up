@@ -20,24 +20,24 @@ describe('NextQ wording and simple actor UI', () => {
     vi.unstubAllGlobals();
   });
 
-  it('presents Staff Admin login without exposing Vendor Admin navigation', () => {
+  it('presents staff sign-in without exposing Event Admin navigation', () => {
     render(
       <MemoryRouter>
         <HomePage />
       </MemoryRouter>,
     );
-    expect(screen.getByRole('heading', { name: 'Staff Admin login' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Staff sign-in' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'N NextQ' })).toBeInTheDocument();
     expect(screen.getByText('© 2026 Gallops Digital. All rights reserved.')).toBeInTheDocument();
     expect(indexHtml).toContain('<title>NextQ</title>');
     expect(screen.getByLabelText('Event ID')).toBeInTheDocument();
     expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'password');
-    expect(screen.queryByRole('link', { name: 'Vendor Admin' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Event Admin' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /create/i })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Business name')).not.toBeInTheDocument();
   });
 
-  it('presents the super admin as Vendor Admin and exposes event management', async () => {
+  it('presents the super admin as Event Admin and exposes event management', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn((input: RequestInfo | URL) => {
@@ -71,9 +71,9 @@ describe('NextQ wording and simple actor UI', () => {
       '/super-admin/queues',
     );
     expect(screen.getByRole('button', { name: 'Create event' })).toBeInTheDocument();
-    expect(screen.getByText('Vendor Admin')).toBeInTheDocument();
+    expect(screen.getByText('Event Admin')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
-    expect(screen.getByLabelText('Staff Admin password')).toBeRequired();
-    expect(screen.getByLabelText('Staff Admin password')).toHaveAttribute('type', 'password');
+    expect(screen.getByLabelText('Staff password')).toBeRequired();
+    expect(screen.getByLabelText('Staff password')).toHaveAttribute('type', 'password');
   });
 });

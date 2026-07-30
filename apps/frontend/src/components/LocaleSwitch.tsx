@@ -1,7 +1,7 @@
 import { locales } from '../i18n/config';
 import { useAppI18n } from '../i18n/context';
 
-const labelKeys = { 'en-US': 'locale.enUS', 'zh-TW': 'locale.zhTW' } as const;
+const labelKeys = { 'en-US': 'locale.enUS', 'zh-HK': 'locale.zhHK' } as const;
 
 export function LocaleSwitch() {
   const { locale, setLocale, t } = useAppI18n();

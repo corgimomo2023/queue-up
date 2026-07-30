@@ -25,13 +25,13 @@ const activePeriod = {
   removedAt: null,
 };
 
-describe('Staff Admin entry flow', () => {
+describe('Staff entry flow', () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
   });
 
-  it('uses the landing page for Event ID and password login without exposing Vendor Admin access', async () => {
+  it('uses the landing page for Event ID and password login without exposing Event Admin access', async () => {
     const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       expect(String(input)).toBe('/api/queues/megabox-summer/unlock');
       expect(JSON.parse(String(init?.body))).toEqual({ credential: 'staff-password-123' });
@@ -48,19 +48,19 @@ describe('Staff Admin entry flow', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('heading', { name: 'Staff Admin login' })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Vendor Admin' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Staff sign-in' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Event Admin' })).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Event ID'), { target: { value: ' MEGABOX-SUMMER ' } });
     fireEvent.change(screen.getByLabelText('Password'), {
       target: { value: 'staff-password-123' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Open event dashboard' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open staff dashboard' }));
 
     expect(await screen.findByRole('heading', { name: 'Staff dashboard' })).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('shows the customer public URL in the Staff Admin dashboard', async () => {
+  it('shows the customer queue URL in the staff dashboard', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn((input: RequestInfo | URL) =>
@@ -91,7 +91,7 @@ describe('Staff Admin entry flow', () => {
     );
 
     expect(await screen.findByRole('heading', { name: 'Summer Event' })).toBeInTheDocument();
-    expect(screen.getByText('Customer public URL')).toBeInTheDocument();
+    expect(screen.getByText('Customer queue URL')).toBeInTheDocument();
     expect(screen.getByText(`${window.location.origin}/q/megabox-summer`)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy public URL' })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByAltText('Customer queue QR code')).toBeInTheDocument());

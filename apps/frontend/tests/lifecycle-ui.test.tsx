@@ -34,13 +34,13 @@ describe('access period UI', () => {
     expect(dateTime('2026-07-22T12:00:00.000Z')).toContain('20:00');
   });
 
-  it('uses the landing page for Staff Admin login without event creation', () => {
+  it('uses the landing page for staff sign-in without event creation', () => {
     render(
       <MemoryRouter>
         <HomePage />
       </MemoryRouter>,
     );
-    expect(screen.getByRole('heading', { name: 'Staff Admin login' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Staff sign-in' })).toBeInTheDocument();
     expect(screen.getByLabelText('Event ID')).toBeInTheDocument();
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
     expect(screen.queryByLabelText('Business name')).not.toBeInTheDocument();

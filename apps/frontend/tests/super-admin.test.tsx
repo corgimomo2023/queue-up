@@ -55,8 +55,8 @@ describe('SuperAdminPage', () => {
         <SuperAdminPage />
       </MemoryRouter>,
     );
-    expect(await screen.findByRole('heading', { name: 'Vendor Admin access' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Vendor Admin key')).toHaveAttribute('type', 'password');
+    expect(await screen.findByRole('heading', { name: 'Event Admin sign-in' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Event Admin password')).toHaveAttribute('type', 'password');
   });
 
   it('uses module navigation and opens audit as its own workspace', async () => {
@@ -109,15 +109,12 @@ describe('SuperAdminPage', () => {
       </MemoryRouter>,
     );
     expect(await screen.findByRole('heading', { name: 'Overview' })).toBeInTheDocument();
-    const menu = screen.getByRole('button', { name: 'Modules' });
+    const menu = screen.getByRole('button', { name: 'Menu' });
     fireEvent.click(menu);
     expect(screen.getByRole('button', { name: 'Close' })).toHaveAttribute('aria-expanded', 'true');
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
-    expect(screen.getByRole('button', { name: 'Modules' })).toHaveAttribute(
-      'aria-expanded',
-      'false',
-    );
-    expect(screen.getByRole('navigation', { name: 'Admin modules' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Menu' })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('navigation', { name: 'Admin menu' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Events' })).toHaveAttribute(
       'href',
       '/super-admin/queues',
@@ -129,7 +126,7 @@ describe('SuperAdminPage', () => {
     expect(screen.getByText('Super Admin Login Success')).toBeInTheDocument();
   });
 
-  it('hides dead Staff Admin and customer links for archived events', async () => {
+  it('hides staff and customer links for archived events', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockImplementation((input: RequestInfo | URL) => {
@@ -181,8 +178,8 @@ describe('SuperAdminPage', () => {
       </MemoryRouter>,
     );
     expect(await screen.findByRole('heading', { name: 'Archived Event' })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Staff Admin page' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Customer public page' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Staff dashboard' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Customer queue page' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Restore event' })).toBeInTheDocument();
   });
 
@@ -277,7 +274,7 @@ describe('SuperAdminPage', () => {
     expect(endDate.value).toBe('');
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     fireEvent.click(screen.getByRole('button', { name: 'Archive event' }));
-    expect(screen.getByRole('dialog', { name: 'Archive event?' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Archive this event?' })).toBeInTheDocument();
     const destructiveButton = screen.getAllByRole('button', { name: 'Archive event' })[1];
     expect(destructiveButton).toBeDisabled();
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Test One' } });
@@ -286,7 +283,7 @@ describe('SuperAdminPage', () => {
 
     fireEvent.click(screen.getByRole('link', { name: 'System' }));
     expect(await screen.findByRole('heading', { name: 'System' })).toBeInTheDocument();
-    expect(screen.getByText('Database ready')).toBeInTheDocument();
+    expect(screen.getByText('Records available')).toBeInTheDocument();
   });
 
   it('does not carry an open event dialog across admin event routes', async () => {

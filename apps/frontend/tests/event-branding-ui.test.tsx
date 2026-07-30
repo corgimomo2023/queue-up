@@ -387,7 +387,7 @@ describe('event branding and lifecycle UI', () => {
     );
 
     expect(await screen.findByRole('status')).toHaveTextContent(
-      'It is your turn. Please return to the event venue within 5 minutes for admission.',
+      'It is your turn. Please return to the venue within 5 minutes.',
     );
     const banner = await screen.findByRole('alertdialog', { name: 'It is your turn' });
     expect(banner).toHaveTextContent('05:00');
@@ -446,7 +446,7 @@ describe('event branding and lifecycle UI', () => {
     );
 
     expect(await screen.findByRole('status')).toHaveTextContent(
-      'It is your turn. Please return to the event venue within 5 minutes for admission.',
+      'It is your turn. Please return to the venue within 5 minutes.',
     );
     expect(await screen.findByRole('alertdialog', { name: 'It is your turn' })).toHaveTextContent(
       '05:00',
@@ -518,7 +518,7 @@ describe('event branding and lifecycle UI', () => {
 
     await act(async () => listeners.get('error')?.(new Event('error')));
 
-    expect(await screen.findByText('Reconnecting live updates…')).toBeInTheDocument();
+    expect(await screen.findByText('Reconnecting to live updates…')).toBeInTheDocument();
     expect(await screen.findByRole('alertdialog', { name: 'It is your turn' })).toHaveTextContent(
       /0[45]:[0-5]\d/,
     );
@@ -567,7 +567,7 @@ describe('event branding and lifecycle UI', () => {
 
     expect(
       await screen.findByText(
-        'You are offline. Your ticket is saved and will reconnect automatically.',
+        'You are offline. Your ticket is saved and updates will resume automatically.',
       ),
     ).toBeInTheDocument();
     expect(customerTicketStore.load(brand.queueId)).not.toBeNull();
@@ -579,7 +579,9 @@ describe('event branding and lifecycle UI', () => {
       document.dispatchEvent(new Event('visibilitychange'));
     });
     expect(
-      await screen.findByText('This page is in the background. Return here to check live updates.'),
+      await screen.findByText(
+        'This page is running in the background. Return here to check your latest position.',
+      ),
     ).toBeInTheDocument();
   });
 
@@ -710,7 +712,7 @@ describe('event branding and lifecycle UI', () => {
     expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
   });
 
-  it('supports Page Setup description and raw logo upload during event creation', async () => {
+  it('supports Page setup description and raw logo upload during event creation', async () => {
     const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       if (String(input) === '/api/queues') {
         expect(JSON.parse(String(init?.body))).toMatchObject({
@@ -740,13 +742,13 @@ describe('event branding and lifecycle UI', () => {
       </MemoryRouter>,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
-    expect(screen.getByRole('heading', { name: 'Page Setup' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Page setup' })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Event name'), { target: { value: 'Autumn Fair' } });
     fireEvent.change(screen.getByLabelText('Event description'), {
       target: { value: 'A neighbourhood celebration.' },
     });
     expect(screen.getByLabelText('Event description')).toHaveAttribute('maxlength', '500');
-    fireEvent.change(screen.getByLabelText('Staff Admin password'), {
+    fireEvent.change(screen.getByLabelText('Staff password'), {
       target: { value: 'password-123' },
     });
     const logo = new File(['png'], 'autumn.png', { type: 'image/png' });
@@ -796,7 +798,7 @@ describe('event branding and lifecycle UI', () => {
     expect(await screen.findByRole('img', { name: 'Summer Show event logo' })).toBeInTheDocument();
     expect(screen.getByText(brand.description)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Edit event' }));
-    expect(screen.getByRole('heading', { name: 'Page Setup' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Page setup' })).toBeInTheDocument();
     expect(screen.getByLabelText('Event description')).toHaveValue(brand.description);
     fireEvent.click(screen.getByRole('button', { name: 'Remove logo' }));
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
@@ -853,7 +855,7 @@ describe('event branding and lifecycle UI', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
     fireEvent.change(screen.getByLabelText('Event name'), { target: { value: 'Autumn Fair' } });
-    fireEvent.change(screen.getByLabelText('Staff Admin password'), {
+    fireEvent.change(screen.getByLabelText('Staff password'), {
       target: { value: 'password-123' },
     });
     fireEvent.change(screen.getByLabelText('Event logo'), {
@@ -863,7 +865,7 @@ describe('event branding and lifecycle UI', () => {
 
     expect(
       await screen.findByText(
-        'Event details were saved, but the logo upload failed. You can retry from Edit event.',
+        'Event details were saved, but the logo could not be uploaded. Try again from Edit event.',
       ),
     ).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: 'Autumn Fair' })).toBeInTheDocument();
@@ -871,7 +873,7 @@ describe('event branding and lifecycle UI', () => {
     expect(fetchMock.mock.calls.filter(([url]) => String(url) === '/api/queues')).toHaveLength(1);
   });
 
-  it('keeps archived Page Setup disabled and read-only', async () => {
+  it('keeps archived Page setup disabled and read-only', async () => {
     const detail = {
       queue: {
         ...brand,

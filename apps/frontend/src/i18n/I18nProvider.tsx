@@ -2,21 +2,25 @@ import { type PropsWithChildren, useEffect, useMemo, useState } from 'react';
 import { createInstance, type i18n, type Resource } from 'i18next';
 import { I18nextProvider, initReactI18next, useTranslation } from 'react-i18next';
 import enUS from './en-US';
-import zhTW from './zh-TW';
+import zhHK from './zh-HK';
 import { locales, type AppLocale } from './config';
 import { I18nContext, type AppTranslate } from './context';
 
 const resources = {
   'en-US': { translation: enUS },
-  'zh-TW': { translation: zhTW },
+  'zh-HK': { translation: zhHK },
 } as const;
 const localeKey = 'nextq-locale';
 
 function detectLocale(): AppLocale {
   const saved = localStorage.getItem(localeKey);
+  if (saved === 'zh-TW') {
+    localStorage.setItem(localeKey, 'zh-HK');
+    return 'zh-HK';
+  }
   if (locales.includes(saved as AppLocale)) return saved as AppLocale;
   const browser = navigator.language.toLowerCase();
-  if (browser.startsWith('zh')) return 'zh-TW';
+  if (browser.startsWith('zh')) return 'zh-HK';
   return 'en-US';
 }
 
