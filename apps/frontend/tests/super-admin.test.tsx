@@ -1,11 +1,21 @@
 import { readFileSync } from 'node:fs';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, useNavigate } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SuperAdminPage } from '../src/pages/SuperAdminPage';
 
 const styles = readFileSync('src/styles.css', 'utf8');
 const accessPeriodStyles = readFileSync('src/access-period.css', 'utf8');
+
+function AdminRouteHarness() {
+  const navigate = useNavigate();
+  return (
+    <>
+      <button onClick={() => navigate('/super-admin/queues/event-b')}>Switch event</button>
+      <SuperAdminPage />
+    </>
+  );
+}
 
 describe('SuperAdminPage', () => {
   afterEach(() => cleanup());
@@ -277,5 +287,83 @@ describe('SuperAdminPage', () => {
     fireEvent.click(screen.getByRole('link', { name: 'System' }));
     expect(await screen.findByRole('heading', { name: 'System' })).toBeInTheDocument();
     expect(screen.getByText('Database ready')).toBeInTheDocument();
+  });
+
+  it('does not carry an open event dialog across admin event routes', async () => {
+    let resolveEventB!: (value: Response) => void;
+    const eventB = new Promise<Response>(resolve => {
+      resolveEventB = resolve;
+    });
+    const detail = (queueId: string, name: string) => ({
+      queue: {
+        queueId,
+        name,
+        vendorUrl: `/vendor/${queueId}`,
+        customerUrl: `/q/${queueId}`,
+        description: null,
+        logoUrl: null,
+        startAt: '2026-07-22T08:00:00.000Z',
+        endAt: null,
+        lifecycleStatus: 'active',
+        timeZone: 'Asia/Hong_Kong',
+        isRemoved: false,
+        removedAt: null,
+      },
+      counts: { waiting: 0, served: 0, ended: 0, total: 0 },
+      customers: [],
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        const json = (body: unknown) =>
+          Promise.resolve(
+            new Response(JSON.stringify(body), {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            }),
+          );
+        if (url.includes('/queues/event-a')) return json(detail('event-a', 'Event A'));
+        if (url.includes('/queues/event-b')) return eventB;
+        if (url.includes('/audit')) return json({ events: [] });
+        return json({
+          summary: {
+            queues: 2,
+            removedQueues: 0,
+            scheduledQueues: 0,
+            activeQueues: 2,
+            endedQueues: 0,
+            waiting: 0,
+            served: 0,
+            totalCustomers: 0,
+          },
+          queues: [],
+        });
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/super-admin/queues/event-a']}>
+        <AdminRouteHarness />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole('heading', { name: 'Event A' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit event' }));
+    expect(screen.getByRole('dialog', { name: 'Edit event' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch event' }));
+    expect(screen.queryByRole('heading', { name: 'Event A' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Edit event' })).not.toBeInTheDocument();
+
+    resolveEventB(
+      new Response(JSON.stringify(detail('event-b', 'Event B')), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    expect(await screen.findByRole('heading', { name: 'Event B' })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Edit event' })).not.toBeInTheDocument(),
+    );
   });
 });

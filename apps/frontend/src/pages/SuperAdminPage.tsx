@@ -1,45 +1,56 @@
-import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { type FormEvent, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Navigate, useLocation, useNavigate } from 'react-router';
-import { apiRequest } from '../api/client';
+import { ApiError, apiRequest } from '../api/client';
+import { adminApi } from '../api/resources';
 import { Card, ErrorMessage, Shell } from '../components/Shell';
 import { AdminShell } from '../features/admin/AdminShell';
 import { AuditModule } from '../features/admin/modules/AuditModule';
 import { OverviewModule } from '../features/admin/modules/OverviewModule';
 import { QueuesModule } from '../features/admin/modules/QueuesModule';
 import { SystemModule } from '../features/admin/modules/SystemModule';
-import type { AuditEvent, AuditResponse, SuperAdminOverview } from '../types';
 import { useAppI18n } from '../i18n/context';
+import { appQueryClient, queryKeys } from '../query/client';
+
+const requiresLogin = (error: unknown) => error instanceof ApiError && error.status === 401;
 
 export function SuperAdminPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useAppI18n();
-  const [authState, setAuthState] = useState<'checking' | 'login' | 'ready'>('checking');
-  const [overview, setOverview] = useState<SuperAdminOverview | null>(null);
-  const [audit, setAudit] = useState<AuditEvent[]>([]);
+  const [forceLogin, setForceLogin] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const loadDashboard = useCallback(async () => {
-    try {
-      const [nextOverview, nextAudit] = await Promise.all([
-        apiRequest<SuperAdminOverview>('/api/super-admin/overview'),
-        apiRequest<AuditResponse>('/api/super-admin/audit?limit=100'),
-      ]);
-      setOverview(nextOverview);
-      setAudit(nextAudit.events);
-      setAuthState('ready');
-      setError('');
-    } catch (cause) {
-      const requiresLogin = cause instanceof Error && cause.message.includes('authentication');
-      if (requiresLogin) setAuthState('login');
-      else setError('errors.loadAdmin');
-    }
-  }, []);
+  const overviewQuery = useQuery(
+    {
+      queryKey: queryKeys.adminOverview(),
+      queryFn: ({ signal }) => adminApi.overview('active', signal),
+      enabled: !forceLogin,
+    },
+    appQueryClient,
+  );
+  const auditQuery = useQuery(
+    {
+      queryKey: queryKeys.adminAudit(),
+      queryFn: ({ signal }) => adminApi.audit(signal),
+      enabled: !forceLogin,
+    },
+    appQueryClient,
+  );
+  const overview = overviewQuery.data ?? null;
+  const audit = auditQuery.data?.events ?? [];
+  const loginRequired =
+    forceLogin || requiresLogin(overviewQuery.error) || requiresLogin(auditQuery.error);
+  const checking = !loginRequired && (overviewQuery.isPending || auditQuery.isPending);
+  const loadError =
+    !loginRequired && (overviewQuery.isError || auditQuery.isError) ? 'errors.loadAdmin' : '';
 
-  useEffect(() => {
-    void loadDashboard();
-  }, [loadDashboard]);
+  const loadDashboard = () =>
+    Promise.all([
+      appQueryClient.invalidateQueries({ queryKey: queryKeys.adminOverview() }),
+      appQueryClient.invalidateQueries({ queryKey: queryKeys.adminAudit() }),
+    ]);
 
   async function login(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -51,6 +62,7 @@ export function SuperAdminPage() {
         method: 'POST',
         body: JSON.stringify({ key: form.get('key') }),
       });
+      setForceLogin(false);
       await loadDashboard();
       navigate('/super-admin/overview', { replace: true });
     } catch {
@@ -61,13 +73,20 @@ export function SuperAdminPage() {
   }
 
   async function logout() {
-    await apiRequest('/api/super-admin/logout', { method: 'POST' });
-    setOverview(null);
-    setAudit([]);
-    setAuthState('login');
+    setBusy(true);
+    setError('');
+    try {
+      await apiRequest('/api/super-admin/logout', { method: 'POST' });
+      appQueryClient.removeQueries({ queryKey: ['admin'] });
+      setForceLogin(true);
+    } catch {
+      setError('errors.actionFailed');
+    } finally {
+      setBusy(false);
+    }
   }
 
-  if (authState === 'checking')
+  if (checking)
     return (
       <Shell>
         <div className="narrow">
@@ -77,7 +96,7 @@ export function SuperAdminPage() {
         </div>
       </Shell>
     );
-  if (authState === 'login')
+  if (loginRequired)
     return (
       <Shell>
         <div className="narrow">
@@ -105,7 +124,7 @@ export function SuperAdminPage() {
       <Shell>
         <div className="narrow">
           <Card>
-            <ErrorMessage message={error ? t(error) : t('errors.loadAdminData')} />
+            <ErrorMessage message={t(error || loadError || 'errors.loadAdminData')} />
           </Card>
         </div>
       </Shell>
@@ -116,7 +135,7 @@ export function SuperAdminPage() {
   const module = location.pathname.split('/')[2];
   return (
     <AdminShell busy={busy} onRefresh={() => void loadDashboard()} onLogout={() => void logout()}>
-      <ErrorMessage message={error ? t(error) : ''} />
+      <ErrorMessage message={error || loadError ? t(error || loadError) : ''} />
       {module === 'overview' && <OverviewModule overview={overview} audit={audit} />}
       {module === 'audit' && <AuditModule events={audit} overview={overview} />}
       {module === 'queues' && <QueuesModule overview={overview} />}

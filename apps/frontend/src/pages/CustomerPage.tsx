@@ -271,19 +271,7 @@ export function CustomerPage() {
     );
   }
 
-  if (queue.lifecycleStatus === 'scheduled') {
-    return (
-      <Shell>
-        <div className="narrow">
-          <Card className="lifecycle-card">
-            <LifecycleStatus event={queue} audience="customer" />
-          </Card>
-        </div>
-      </Shell>
-    );
-  }
-
-  if (queue.lifecycleStatus === 'ended') {
+  if (queue.lifecycleStatus !== 'active') {
     return (
       <Shell>
         <div className="narrow">

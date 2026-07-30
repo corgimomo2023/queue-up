@@ -10,6 +10,7 @@
     "build": "npm run typecheck && vite build"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.101.4",
     "i18next": "26.3.6",
     "qrcode": "^1.5.4",
     "react": "^19.1.1",

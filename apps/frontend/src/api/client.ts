@@ -33,11 +33,33 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
 }
 
 const key = (queueId: string) => `queueflow:ticket:${queueId}`;
+const volatileTickets = new Map<string, TicketRecord | null>();
+
 export const customerTicketStore = {
   save(queueId: string, ticket: TicketRecord) {
-    localStorage.setItem(key(queueId), JSON.stringify(ticket));
+    try {
+      localStorage.setItem(key(queueId), JSON.stringify(ticket));
+      volatileTickets.delete(queueId);
+    } catch {
+      volatileTickets.set(queueId, ticket);
+    }
   },
   load(queueId: string): TicketRecord | null {
+    if (volatileTickets.has(queueId)) {
+      const fallback = volatileTickets.get(queueId) ?? null;
+      try {
+        if (fallback === null) {
+          localStorage.removeItem(key(queueId));
+          volatileTickets.delete(queueId);
+          return null;
+        }
+        localStorage.setItem(key(queueId), JSON.stringify(fallback));
+        volatileTickets.delete(queueId);
+        return fallback;
+      } catch {
+        return fallback;
+      }
+    }
     try {
       const value = localStorage.getItem(key(queueId));
       return value ? (JSON.parse(value) as TicketRecord) : null;
@@ -46,6 +68,11 @@ export const customerTicketStore = {
     }
   },
   remove(queueId: string) {
-    localStorage.removeItem(key(queueId));
+    try {
+      localStorage.removeItem(key(queueId));
+      volatileTickets.delete(queueId);
+    } catch {
+      volatileTickets.set(queueId, null);
+    }
   },
 };

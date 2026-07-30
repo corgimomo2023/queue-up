@@ -1,74 +1,96 @@
-import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import QRCode from 'qrcode';
 import { Link, useParams } from 'react-router';
-import { apiRequest } from '../api/client';
+import { ApiError, apiRequest } from '../api/client';
+import { queueApi, vendorApi } from '../api/resources';
 import { Card, ErrorMessage, Shell } from '../components/Shell';
 import { EventBrand, LifecycleStatus } from '../components/EventBrand';
-import type { QueueInfo, VendorDashboard } from '../types';
 import { useAppI18n } from '../i18n/context';
+import { appQueryClient, queryKeys } from '../query/client';
+
+interface VendorAction {
+  path: string;
+  method: 'POST' | 'DELETE';
+}
 
 export function VendorPage() {
   const { queueId = '' } = useParams();
   const { t, locale } = useAppI18n();
-  const [queue, setQueue] = useState<QueueInfo | null>(null);
-  const [periodLoaded, setPeriodLoaded] = useState(false);
-  const [dashboard, setDashboard] = useState<VendorDashboard | null>(null);
-  const [needsLogin, setNeedsLogin] = useState(false);
   const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
   const [qr, setQr] = useState('');
-  const generation = useRef(0);
-  const currentDashboard = dashboard?.queueId === queueId ? dashboard : null;
-  const customerUrl = currentDashboard?.customerUrl;
-  const loadPeriod = useCallback(
-    async (requestGeneration = generation.current) => {
-      try {
-        const result = await apiRequest<QueueInfo>(`/api/queues/${queueId}`);
-        if (generation.current === requestGeneration) setQueue(result);
-      } catch {
-        if (generation.current === requestGeneration) {
-          setQueue(null);
-          setDashboard(null);
-          setError('errors.queueNotFound');
-        }
-      } finally {
-        if (generation.current === requestGeneration) setPeriodLoaded(true);
-      }
+  const [forceLogin, setForceLogin] = useState(false);
+  const activeQueueIdRef = useRef(queueId);
+  activeQueueIdRef.current = queueId;
+
+  const queueQuery = useQuery(
+    {
+      queryKey: queryKeys.queue(queueId),
+      queryFn: ({ signal }) => queueApi.get(queueId, signal),
+      enabled: Boolean(queueId),
     },
-    [queueId],
+    appQueryClient,
   );
-  const load = useCallback(
-    async (requestGeneration = generation.current) => {
-      try {
-        const result = await apiRequest<VendorDashboard>(`/api/vendor/${queueId}`);
-        if (generation.current === requestGeneration) {
-          setDashboard(result);
-          setNeedsLogin(false);
-        }
-      } catch (cause) {
-        if (generation.current !== requestGeneration) return;
-        setDashboard(null);
-        if (cause instanceof Error && cause.message.includes('authentication')) setNeedsLogin(true);
-        else setError('errors.loadDashboard');
-      }
+  const queue = queueQuery.data ?? null;
+  const dashboardQuery = useQuery(
+    {
+      queryKey: queryKeys.vendor(queueId),
+      queryFn: ({ signal }) => vendorApi.dashboard(queueId, signal),
+      enabled: Boolean(queueId) && !forceLogin,
+      refetchInterval: queue?.lifecycleStatus === 'active' ? 3_000 : false,
     },
-    [queueId],
+    appQueryClient,
   );
+  const receivedUnauthorized =
+    dashboardQuery.error instanceof ApiError && dashboardQuery.error.status === 401;
+  const needsLogin = forceLogin || receivedUnauthorized;
+  const dashboard = needsLogin ? null : (dashboardQuery.data ?? null);
+  const customerUrl = dashboard?.customerUrl;
+
+  const refreshQueueData = () =>
+    Promise.all([
+      appQueryClient.invalidateQueries({ queryKey: queryKeys.queue(queueId) }),
+      appQueryClient.invalidateQueries({ queryKey: queryKeys.vendor(queueId) }),
+    ]);
+
+  const unlockMutation = useMutation(
+    {
+      mutationFn: (credential: FormDataEntryValue | null) =>
+        apiRequest(`/api/queues/${queueId}/unlock`, {
+          method: 'POST',
+          body: JSON.stringify({ credential }),
+        }),
+    },
+    appQueryClient,
+  );
+  const actionMutation = useMutation(
+    {
+      mutationFn: ({ path, method }: VendorAction) => apiRequest(path, { method }),
+      onSuccess: refreshQueueData,
+    },
+    appQueryClient,
+  );
+  const logoutMutation = useMutation(
+    {
+      mutationFn: () =>
+        apiRequest(`/api/vendor/${queueId}/logout`, {
+          method: 'POST',
+        }),
+    },
+    appQueryClient,
+  );
+  const busy = unlockMutation.isPending || actionMutation.isPending || logoutMutation.isPending;
+
   useEffect(() => {
-    const current = ++generation.current;
-    setPeriodLoaded(false);
-    setQueue(null);
-    setDashboard(null);
-    setNeedsLogin(false);
-    setBusy(false);
     setError('');
     setQr('');
-    void loadPeriod(current);
-    void load(current);
-    return () => {
-      if (generation.current === current) generation.current += 1;
-    };
-  }, [loadPeriod, load]);
+    setForceLogin(false);
+  }, [queueId]);
+
+  useEffect(() => {
+    if (receivedUnauthorized) setForceLogin(true);
+  }, [receivedUnauthorized]);
+
   useEffect(() => {
     setQr('');
     if (!customerUrl) return;
@@ -78,55 +100,67 @@ export function VendorPage() {
         if (active) setQr(value);
       },
     );
-    const timer = setInterval(() => {
-      void loadPeriod();
-      void load();
-    }, 3000);
     return () => {
       active = false;
-      clearInterval(timer);
     };
-  }, [customerUrl, load, loadPeriod]);
+  }, [customerUrl]);
+
   async function unlock(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const requestGeneration = generation.current;
-    setBusy(true);
+    const requestQueueId = queueId;
     setError('');
     const form = new FormData(event.currentTarget);
     try {
-      await apiRequest(`/api/queues/${queueId}/unlock`, {
-        method: 'POST',
-        body: JSON.stringify({ credential: form.get('credential') }),
-      });
-      if (generation.current === requestGeneration) await load(requestGeneration);
+      await unlockMutation.mutateAsync(form.get('credential'));
+      if (activeQueueIdRef.current !== requestQueueId) return;
+      setForceLogin(false);
+      await Promise.all([queueQuery.refetch(), dashboardQuery.refetch()]);
     } catch {
-      if (generation.current === requestGeneration) setError('errors.accessDenied');
-    } finally {
-      if (generation.current === requestGeneration) setBusy(false);
+      if (activeQueueIdRef.current !== requestQueueId) return;
+      setError('errors.accessDenied');
     }
   }
-  async function action(path: string, method: 'POST' | 'DELETE') {
-    const requestGeneration = generation.current;
-    setBusy(true);
+
+  async function action(path: string, method: VendorAction['method']) {
+    const requestQueueId = queueId;
     setError('');
     try {
-      await apiRequest(path, { method });
-      if (generation.current === requestGeneration) await load(requestGeneration);
-      return generation.current === requestGeneration;
-    } catch {
-      if (generation.current === requestGeneration) setError('errors.actionFailed');
+      await actionMutation.mutateAsync({ path, method });
+      return true;
+    } catch (cause) {
+      if (activeQueueIdRef.current !== requestQueueId) return false;
+      if (cause instanceof ApiError && cause.status === 401) {
+        setForceLogin(true);
+        appQueryClient.removeQueries({ queryKey: queryKeys.vendor(queueId) });
+      }
+      setError('errors.actionFailed');
       return false;
-    } finally {
-      if (generation.current === requestGeneration) setBusy(false);
     }
   }
+
   async function logout() {
-    if (await action(`/api/vendor/${queueId}/logout`, 'POST')) {
-      setDashboard(null);
-      setNeedsLogin(true);
+    const requestQueueId = queueId;
+    setError('');
+    setForceLogin(true);
+    try {
+      await logoutMutation.mutateAsync();
+      await appQueryClient.cancelQueries({ queryKey: queryKeys.vendor(requestQueueId) });
+      appQueryClient.removeQueries({ queryKey: queryKeys.vendor(requestQueueId) });
+    } catch {
+      if (activeQueueIdRef.current !== requestQueueId) return;
+      setForceLogin(false);
+      setError('errors.actionFailed');
     }
   }
-  if (!periodLoaded || (queue !== null && queue.queueId !== queueId))
+
+  const loadError = queueQuery.isError
+    ? 'errors.queueNotFound'
+    : dashboardQuery.isError && !receivedUnauthorized
+      ? 'errors.loadDashboard'
+      : '';
+  const visibleError = error || loadError;
+
+  if (queueQuery.isPending)
     return (
       <Shell>
         <div className="narrow">
@@ -141,12 +175,12 @@ export function VendorPage() {
       <Shell>
         <div className="narrow">
           <Card>
-            <ErrorMessage message={error ? t(error) : ''} />
+            <ErrorMessage message={visibleError ? t(visibleError) : ''} />
           </Card>
         </div>
       </Shell>
     );
-  if (queue.lifecycleStatus === 'scheduled')
+  if (queue.lifecycleStatus !== 'active')
     return (
       <Shell>
         <div className="narrow">
@@ -159,20 +193,7 @@ export function VendorPage() {
         </div>
       </Shell>
     );
-  if (queue?.lifecycleStatus === 'ended')
-    return (
-      <Shell>
-        <div className="narrow">
-          <Card className="lifecycle-card">
-            <LifecycleStatus event={queue} audience="staff" />
-            <Link className="button ghost" to="/">
-              {t('staff.backLogin')}
-            </Link>
-          </Card>
-        </div>
-      </Shell>
-    );
-  if (needsLogin && !currentDashboard)
+  if (needsLogin)
     return (
       <Shell>
         <div className="narrow">
@@ -186,7 +207,7 @@ export function VendorPage() {
                 {t('common.password')}
                 <input name="credential" type="password" autoComplete="current-password" required />
               </label>
-              <ErrorMessage message={error ? t(error) : ''} />
+              <ErrorMessage message={visibleError ? t(visibleError) : ''} />
               <button className="button primary" disabled={busy}>
                 {busy ? t('common.checking') : t('staff.unlock')}
               </button>
@@ -198,18 +219,19 @@ export function VendorPage() {
         </div>
       </Shell>
     );
-  if (!currentDashboard)
+  if (!dashboard)
     return (
       <Shell>
         <div className="narrow">
           <Card>
             <p>{t('staff.loading')}</p>
-            <ErrorMessage message={error ? t(error) : ''} />
+            <ErrorMessage message={visibleError ? t(visibleError) : ''} />
           </Card>
         </div>
       </Shell>
     );
-  const joinUrl = `${location.origin}${currentDashboard.customerUrl}`;
+
+  const joinUrl = `${location.origin}${dashboard.customerUrl}`;
   return (
     <Shell
       actions={
@@ -220,23 +242,23 @@ export function VendorPage() {
     >
       <section className="dashboard-head">
         <div>
-          <EventBrand event={currentDashboard} eyebrow={t('staff.dashboard')} />
+          <EventBrand event={dashboard} eyebrow={t('staff.dashboard')} />
           <p className="muted">
             {t('staff.waitingCount', {
-              count: currentDashboard.waitingCount,
-              unit: t(currentDashboard.waitingCount === 1 ? 'common.person' : 'common.people'),
+              count: dashboard.waitingCount,
+              unit: t(dashboard.waitingCount === 1 ? 'common.person' : 'common.people'),
             })}
           </p>
         </div>
         <button
           className="button primary"
-          disabled={busy || !currentDashboard.waitingCount}
+          disabled={busy || !dashboard.waitingCount}
           onClick={() => void action(`/api/vendor/${queueId}/serve-next`, 'POST')}
         >
           {t('staff.callNext')}
         </button>
       </section>
-      <ErrorMessage message={error ? t(error) : ''} />
+      <ErrorMessage message={visibleError ? t(visibleError) : ''} />
       <div className="dashboard-grid">
         <Card className="qr-card">
           <h2>{t('staff.publicAccess')}</h2>
@@ -252,15 +274,11 @@ export function VendorPage() {
               {t('staff.copyUrl')}
             </button>
             {qr && (
-              <a
-                className="button ghost"
-                href={qr}
-                download={`${currentDashboard.name}-queue-qr.png`}
-              >
+              <a className="button ghost" href={qr} download={`${dashboard.name}-queue-qr.png`}>
                 {t('staff.downloadQr')}
               </a>
             )}
-            <Link className="text-link" to={currentDashboard.customerUrl}>
+            <Link className="text-link" to={dashboard.customerUrl}>
               {t('staff.previewCustomer')}
             </Link>
           </div>
@@ -271,7 +289,7 @@ export function VendorPage() {
               <h2>{t('staff.currentQueue')}</h2>
               <p className="muted">{t('staff.fifo')}</p>
             </div>
-            {currentDashboard.customers.length > 0 && (
+            {dashboard.customers.length > 0 && (
               <button
                 className="button small danger"
                 disabled={busy}
@@ -284,14 +302,14 @@ export function VendorPage() {
               </button>
             )}
           </div>
-          {currentDashboard.customers.length === 0 ? (
+          {dashboard.customers.length === 0 ? (
             <div className="empty">
               <strong>{t('staff.empty')}</strong>
               <p>{t('staff.emptyHint')}</p>
             </div>
           ) : (
             <ol className="customer-list">
-              {currentDashboard.customers.map((customer, index) => (
+              {dashboard.customers.map((customer, index) => (
                 <li key={customer.customerId}>
                   <span className="position">{index + 1}</span>
                   <div className="customer-info">

@@ -96,6 +96,56 @@ describe('frontend API utilities', () => {
     expect(shown).toEqual(['It is your turn']);
   });
 
+  it('keeps ticket operations usable when localStorage writes are blocked', () => {
+    localStorage.setItem(
+      'queueflow:ticket:q-memory',
+      JSON.stringify({ leaveToken: 'old', customerId: 1 }),
+    );
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('Storage blocked', 'SecurityError');
+    });
+
+    expect(() =>
+      customerTicketStore.save('q-memory', { leaveToken: 'opaque', customerId: 7 }),
+    ).not.toThrow();
+    expect(customerTicketStore.load('q-memory')).toEqual({
+      leaveToken: 'opaque',
+      customerId: 7,
+    });
+    setItem.mockRestore();
+    expect(customerTicketStore.load('q-memory')).toEqual({
+      leaveToken: 'opaque',
+      customerId: 7,
+    });
+    expect(JSON.parse(localStorage.getItem('queueflow:ticket:q-memory') ?? 'null')).toEqual({
+      leaveToken: 'opaque',
+      customerId: 7,
+    });
+    localStorage.setItem(
+      'queueflow:ticket:q-memory',
+      JSON.stringify({ leaveToken: 'cross-tab', customerId: 9 }),
+    );
+    expect(customerTicketStore.load('q-memory')).toEqual({
+      leaveToken: 'cross-tab',
+      customerId: 9,
+    });
+
+    localStorage.setItem(
+      'queueflow:ticket:q-stale',
+      JSON.stringify({ leaveToken: 'stale', customerId: 8 }),
+    );
+    const removeItem = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+      throw new DOMException('Storage blocked', 'SecurityError');
+    });
+    expect(() => customerTicketStore.remove('q-memory')).not.toThrow();
+    expect(() => customerTicketStore.remove('q-stale')).not.toThrow();
+    expect(customerTicketStore.load('q-memory')).toBeNull();
+    expect(customerTicketStore.load('q-stale')).toBeNull();
+    removeItem.mockRestore();
+    expect(customerTicketStore.load('q-stale')).toBeNull();
+    expect(localStorage.getItem('queueflow:ticket:q-stale')).toBeNull();
+  });
+
   it('stores each customer ticket by queue without leaking into cookies', () => {
     customerTicketStore.save('q-one', { leaveToken: 'opaque', customerId: 2 });
     expect(customerTicketStore.load('q-one')).toEqual({ leaveToken: 'opaque', customerId: 2 });
