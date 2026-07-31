@@ -1660,6 +1660,7 @@ textarea {
 }
 .landing-copy h1 {
   max-width: 650px;
+  white-space: pre-line;
 }
 .landing-copy .lede {
   max-width: 650px;

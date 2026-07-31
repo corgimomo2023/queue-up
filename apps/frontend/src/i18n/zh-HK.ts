@@ -65,7 +65,7 @@ const zhHK = {
     eyebrow: 'Easy Queue · 活動營運',
     navigation: '首頁導覽',
     featuresNav: '產品特色',
-    heroTitle: '排隊流程，簡單清楚。',
+    heroTitle: '排隊流程，\n簡單清楚。',
     heroIntro: '主辦方即時掌握隊伍，顧客掃描 QR code 加入，毋須留在原地等候，隨時查看最新位置。',
     featuresLabel: 'Easy Queue 產品特色',
     featureQr: 'QR code 快速加入',
