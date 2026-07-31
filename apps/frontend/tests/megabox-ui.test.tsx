@@ -31,6 +31,10 @@ describe('Easy Queue wording and simple actor UI', () => {
     expect(screen.getByText('© 2026 Gallops Digital. All rights reserved.')).toBeInTheDocument();
     expect(indexHtml).toContain('<title>Easy Queue</title>');
     expect(indexHtml).toContain('<link rel="manifest" href="/manifest.webmanifest" />');
+    expect(indexHtml).toContain(
+      '<link rel="icon" href="/favicon-easy-queue.ico?v=2" sizes="any" />',
+    );
+    expect(indexHtml).not.toContain('href="/favicon.ico"');
     expect(indexHtml).toContain('<meta property="og:title" content="Easy Queue" />');
     expect(indexHtml).toContain(
       '<meta property="og:description" content="A simple event queue with live position updates." />',
