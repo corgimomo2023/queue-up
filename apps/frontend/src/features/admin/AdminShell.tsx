@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from 'react';
 import { NavLink } from 'react-router';
 import { LocaleSwitch } from '../../components/LocaleSwitch';
+import { Button } from '../../components/ui/Button';
 import { useAppI18n } from '../../i18n/context';
 
 type AdminShellProps = {
@@ -66,9 +67,9 @@ export function AdminShell({ children, busy, onRefresh, onLogout }: AdminShellPr
             <small>{t('adminShell.operational')}</small>
           </div>
         </div>
-        <button className="admin-logout" onClick={onLogout}>
+        <Button variant="ghost" className="admin-logout" onClick={onLogout}>
           {t('common.logOut')}
-        </button>
+        </Button>
       </aside>
       <section className="admin-workspace">
         <header className="admin-workspace-bar">
@@ -78,9 +79,9 @@ export function AdminShell({ children, busy, onRefresh, onLogout }: AdminShellPr
           </div>
           <div className="topbar-actions">
             <LocaleSwitch />
-            <button className="button small ghost" disabled={busy} onClick={onRefresh}>
+            <Button variant="ghost" size="small" disabled={busy} onClick={onRefresh}>
               {t('adminShell.refresh')}
-            </button>
+            </Button>
           </div>
         </header>
         <main className="admin-workspace-content">{children}</main>

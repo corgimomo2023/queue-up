@@ -1,6 +1,8 @@
 import { Link } from 'react-router';
 import { Card } from '../../../components/Shell';
 import { EventBrand } from '../../../components/EventBrand';
+import { Button } from '../../../components/ui/Button';
+import { Input } from '../../../components/ui/Input';
 import { useAppI18n } from '../../../i18n/context';
 import type { AdminQueueDetail, SuperAdminOverview } from '../../../types';
 import { dateTime } from '../formatters';
@@ -54,7 +56,7 @@ export function QueueListPanel({
           </div>
           <label className="search-field">
             <span className="sr-only">{t('queues.search')}</span>
-            <input
+            <Input
               value={search}
               onChange={event => onSearchChange(event.target.value)}
               placeholder={t('queues.searchPlaceholder')}
@@ -102,9 +104,9 @@ export function QueueListPanel({
                 <td data-label={t('common.served')}>{event.servedCount}</td>
                 <td data-label={t('common.total')}>{event.totalCustomers}</td>
                 <td data-label={t('common.action')}>
-                  <button className="button small secondary" onClick={() => onView(event.queueId)}>
+                  <Button variant="secondary" size="small" onClick={() => onView(event.queueId)}>
                     {t('common.view')}
-                  </button>
+                  </Button>
                 </td>
               </tr>
             ))}
@@ -148,16 +150,17 @@ export function QueueDetailPanel({
           <code>{detail.queue.queueId}</code>
         </div>
         <div className="stack">
-          <button
-            className="button small secondary"
+          <Button
+            variant="secondary"
+            size="small"
             disabled={detail.queue.isRemoved}
             onClick={onEdit}
           >
             {t('queues.edit')}
-          </button>
-          <button className="button small ghost" onClick={onBack}>
+          </Button>
+          <Button variant="ghost" size="small" onClick={onBack}>
             {t('queues.back')}
-          </button>
+          </Button>
         </div>
       </div>
       <section className="page-setup-preview">
@@ -258,13 +261,13 @@ export function QueueDetailPanel({
           <p>{t(detail.queue.isRemoved ? 'queues.restoreHint' : 'queues.archiveHint')}</p>
         </div>
         {detail.queue.isRemoved ? (
-          <button className="button secondary" disabled={busy} onClick={onRestore}>
+          <Button variant="secondary" disabled={busy} onClick={onRestore}>
             {t('queues.restore')}
-          </button>
+          </Button>
         ) : (
-          <button className="button danger" onClick={onArchive}>
+          <Button variant="danger" onClick={onArchive}>
             {t('queues.archiveTitle')}
-          </button>
+          </Button>
         )}
       </section>
     </Card>

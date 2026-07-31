@@ -277,11 +277,14 @@ describe('event branding and lifecycle UI', () => {
     await waitFor(() => expect(requestPermission).toHaveBeenCalledOnce());
 
     fireEvent.click(await screen.findByRole('button', { name: 'Test alert' }));
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'It is your turn. Please return to the venue within 5 minutes.',
+    );
     await waitFor(() => {
       expect(shownNotifications).toContain('It is your turn');
     });
 
-    const testDismiss = screen.getByRole('button', { name: 'I am on my way' });
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     const calledAt = new Date().toISOString();
     const expiresAt = new Date(Date.parse(calledAt) + 2 * 60_000).toISOString();
     act(() => {
@@ -292,11 +295,12 @@ describe('event branding and lifecycle UI', () => {
       );
     });
 
-    await waitFor(() => expect(screen.getByText(/0[12]:[0-5]\d/)).toBeInTheDocument());
-    const realDismiss = screen.getByRole('button', { name: 'I am on my way' });
-    expect(realDismiss).not.toBe(testDismiss);
-    fireEvent.click(testDismiss);
-    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'It is your turn. Please return to the venue within 5 minutes.',
+    );
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Time remaining')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'I am on my way' })).not.toBeInTheDocument();
   });
 
   it('does not replay foreground notifications or the full-screen banner after expiry', async () => {
@@ -389,8 +393,9 @@ describe('event branding and lifecycle UI', () => {
     expect(await screen.findByRole('status')).toHaveTextContent(
       'It is your turn. Please return to the venue within 5 minutes.',
     );
-    const banner = await screen.findByRole('alertdialog', { name: 'It is your turn' });
-    expect(banner).toHaveTextContent('05:00');
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Time remaining')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'I am on my way' })).not.toBeInTheDocument();
   });
 
   it('shows the called alert immediately when SSE arrives even if status refresh fails', async () => {
@@ -448,9 +453,9 @@ describe('event branding and lifecycle UI', () => {
     expect(await screen.findByRole('status')).toHaveTextContent(
       'It is your turn. Please return to the venue within 5 minutes.',
     );
-    expect(await screen.findByRole('alertdialog', { name: 'It is your turn' })).toHaveTextContent(
-      '05:00',
-    );
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Time remaining')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'I am on my way' })).not.toBeInTheDocument();
     expect(customerTicketStore.load(brand.queueId)).not.toBeNull();
   });
 
@@ -519,9 +524,11 @@ describe('event branding and lifecycle UI', () => {
     await act(async () => listeners.get('error')?.(new Event('error')));
 
     expect(await screen.findByText('Reconnecting to live updates…')).toBeInTheDocument();
-    expect(await screen.findByRole('alertdialog', { name: 'It is your turn' })).toHaveTextContent(
-      /0[45]:[0-5]\d/,
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'It is your turn. Please return to the venue within 5 minutes.',
     );
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Time remaining')).not.toBeInTheDocument();
   });
 
   it('shows offline and background page status without discarding the ticket', async () => {
@@ -712,7 +719,7 @@ describe('event branding and lifecycle UI', () => {
     expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
   });
 
-  it('supports Page setup description and raw logo upload during event creation', async () => {
+  it('supports Page setup description and styled logo upload during event creation', async () => {
     const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       if (String(input) === '/api/queues') {
         expect(JSON.parse(String(init?.body))).toMatchObject({
@@ -743,6 +750,8 @@ describe('event branding and lifecycle UI', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
     expect(screen.getByRole('heading', { name: 'Page setup' })).toBeInTheDocument();
+    expect(screen.getByText('Choose image')).toHaveClass('ui-file-upload-trigger');
+    expect(screen.getByText('No image selected')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Event name'), { target: { value: 'Autumn Fair' } });
     fireEvent.change(screen.getByLabelText('Event description'), {
       target: { value: 'A neighbourhood celebration.' },
@@ -753,6 +762,7 @@ describe('event branding and lifecycle UI', () => {
     });
     const logo = new File(['png'], 'autumn.png', { type: 'image/png' });
     fireEvent.change(screen.getByLabelText('Event logo'), { target: { files: [logo] } });
+    expect(screen.getByText('autumn.png')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Autumn Fair logo preview' })).toHaveAttribute(
       'src',
       'blob:preview',

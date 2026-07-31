@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router';
 import { apiRequest } from '../../../api/client';
 import { adminApi } from '../../../api/resources';
 import { Card, ErrorMessage } from '../../../components/Shell';
+import { Button } from '../../../components/ui/Button';
 import type { AdminQueueDetail, SuperAdminOverview } from '../../../types';
 import { useAppI18n } from '../../../i18n/context';
 import { appQueryClient, queryKeys } from '../../../query/client';
@@ -274,8 +275,8 @@ export function QueuesModule({ overview }: { overview: SuperAdminOverview }) {
             {t('queues.count', { count: overview.summary.queues })}
           </span>
           {!queueId && (
-            <button
-              className="button primary"
+            <Button
+              variant="primary"
               aria-hidden={creating}
               disabled={creating}
               onClick={() => {
@@ -284,7 +285,7 @@ export function QueuesModule({ overview }: { overview: SuperAdminOverview }) {
               }}
             >
               {t('queues.create')}
-            </button>
+            </Button>
           )}
         </div>
       </header>

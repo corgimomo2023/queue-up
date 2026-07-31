@@ -1,5 +1,9 @@
 import { useState } from 'react';
 import { useAppI18n } from '../../../i18n/context';
+import { Button } from '../../../components/ui/Button';
+import { FileUpload } from '../../../components/ui/FileUpload';
+import { Input } from '../../../components/ui/Input';
+import { Textarea } from '../../../components/ui/Textarea';
 
 export function PageSetupFields({
   defaultName = '',
@@ -26,7 +30,7 @@ export function PageSetupFields({
       <h3>{t('queues.pageSetup')}</h3>
       <label>
         {t('queues.eventName')}
-        <input
+        <Input
           name="name"
           required
           maxLength={100}
@@ -37,26 +41,25 @@ export function PageSetupFields({
       </label>
       <label>
         {t('queues.eventDescription')} <span className="optional">{t('common.optional')}</span>
-        <textarea
+        <Textarea
           aria-label={t('queues.eventDescription')}
           name="description"
-          maxLength={500}
           rows={4}
+          maxLength={500}
           defaultValue={defaultDescription ?? ''}
           placeholder={t('queues.descriptionPlaceholder')}
         />
       </label>
-      <label>
-        {t('queues.eventLogo')} <span className="optional">{t('common.optional')}</span>
-        <input
-          aria-label={t('queues.eventLogo')}
-          name="logo"
-          type="file"
-          accept="image/png,image/jpeg,image/webp"
-          onChange={event => onLogoChange(event.target.files?.[0] ?? null)}
-        />
-      </label>
-      <p className="muted">{t('queues.logoHint')}</p>
+      <FileUpload
+        label={t('queues.eventLogo')}
+        optionalLabel={t('common.optional')}
+        buttonLabel={t('queues.chooseLogo')}
+        emptyLabel={t('queues.noLogoSelected')}
+        name="logo"
+        accept="image/png,image/jpeg,image/webp"
+        onFileChange={onLogoChange}
+      />
+      <p className="muted ui-field-hint">{t('queues.logoHint')}</p>
       {visibleLogo && (
         <div className="logo-preview">
           <img
@@ -64,9 +67,9 @@ export function PageSetupFields({
             alt={t('branding.previewAlt', { name: name || t('common.event') })}
           />
           {logoUrl && onRemoveLogo && (
-            <button type="button" className="button small ghost" onClick={onRemoveLogo}>
+            <Button variant="ghost" size="small" onClick={onRemoveLogo}>
               {t('queues.removeLogo')}
-            </button>
+            </Button>
           )}
         </div>
       )}

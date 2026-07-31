@@ -1,4 +1,4 @@
-import type { PropsWithChildren, ReactNode } from 'react';
+import type { ComponentPropsWithoutRef, PropsWithChildren, ReactNode } from 'react';
 import { Link } from 'react-router';
 import { LocaleSwitch } from './LocaleSwitch';
 import { useAppI18n } from '../i18n/context';
@@ -22,8 +22,16 @@ export function Shell({ children, actions }: PropsWithChildren<{ actions?: React
   );
 }
 
-export function Card({ children, className = '' }: PropsWithChildren<{ className?: string }>) {
-  return <section className={`card ${className}`}>{children}</section>;
+export function Card({
+  children,
+  className = '',
+  ...props
+}: PropsWithChildren<ComponentPropsWithoutRef<'section'>>) {
+  return (
+    <section className={`card ${className}`} {...props}>
+      {children}
+    </section>
+  );
 }
 
 export function ErrorMessage({ message }: { message?: string }) {

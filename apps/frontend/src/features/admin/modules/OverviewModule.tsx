@@ -42,24 +42,9 @@ export function OverviewModule({
           <small>{t('overview.completed')}</small>
         </Card>
         <Card>
-          <span>{t('overview.totalCustomers')}</span>
-          <strong>{overview.summary.totalCustomers}</strong>
-          <small>{t('overview.retained')}</small>
-        </Card>
-        <Card>
-          <span>{t('overview.scheduled')}</span>
-          <strong>{overview.summary.scheduledQueues}</strong>
-          <small>{t('overview.notOpen')}</small>
-        </Card>
-        <Card>
           <span>{t('overview.active')}</span>
           <strong>{overview.summary.activeQueues}</strong>
           <small>{t('overview.open')}</small>
-        </Card>
-        <Card>
-          <span>{t('overview.ended')}</span>
-          <strong>{overview.summary.endedQueues}</strong>
-          <small>{t('overview.completedPeriod')}</small>
         </Card>
       </section>
       <section className="admin-overview-grid">

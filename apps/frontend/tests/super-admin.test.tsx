@@ -37,7 +37,11 @@ describe('SuperAdminPage', () => {
   it('keeps admin module names free of browser hyperlink styling', () => {
     expect(styles).toContain('.admin-module-nav a:visited');
     expect(styles).toMatch(/\.admin-module-nav a\s*\{[^}]*text-decoration:\s*none/);
-    expect(styles).toMatch(/\.admin-module-nav a:visited\s*\{[^}]*color:\s*#5d554f/);
+    expect(styles).toMatch(/\.admin-sidebar\s*\{[^}]*background:\s*#27221f/);
+    expect(styles).toMatch(/\.admin-module-nav a:visited\s*\{[^}]*color:\s*#d8d0ca/);
+    expect(styles).toMatch(
+      /\.overview-list > a\s*\{[^}]*color:\s*var\(--ink\)[^}]*text-decoration:\s*none/,
+    );
   });
 
   it('keeps the create-event dialog wide and scrollable within short viewports', () => {
@@ -109,6 +113,10 @@ describe('SuperAdminPage', () => {
       </MemoryRouter>,
     );
     expect(await screen.findByRole('heading', { name: 'Overview' })).toBeInTheDocument();
+    const metrics = screen.getByRole('region', { name: 'System overview' });
+    expect(metrics.children).toHaveLength(4);
+    expect(screen.getByText('Active')).toBeInTheDocument();
+    expect(screen.queryByText('Total customers')).not.toBeInTheDocument();
     const menu = screen.getByRole('button', { name: 'Menu' });
     fireEvent.click(menu);
     expect(screen.getByRole('button', { name: 'Close' })).toHaveAttribute('aria-expanded', 'true');

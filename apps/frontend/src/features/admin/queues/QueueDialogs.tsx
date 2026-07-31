@@ -1,5 +1,7 @@
 import type { FormEvent } from 'react';
 import { ErrorMessage } from '../../../components/Shell';
+import { Button } from '../../../components/ui/Button';
+import { Input } from '../../../components/ui/Input';
 import { useAppI18n } from '../../../i18n/context';
 import type { AdminQueueDetail } from '../../../types';
 import { PageSetupFields } from '../components/PageSetupFields';
@@ -47,7 +49,7 @@ export function CreateEventDialog({
           <PageSetupFields previewUrl={logoPreview} onLogoChange={onLogoChange} />
           <label>
             {t('queues.staffPassword')}
-            <input
+            <Input
               name="password"
               type="password"
               autoComplete="new-password"
@@ -84,22 +86,22 @@ export function CreateEventDialog({
             {startMode === 'scheduled' && (
               <label>
                 {t('queues.startDate')}
-                <input name="startLocal" type="datetime-local" required />
+                <Input name="startLocal" type="datetime-local" required />
               </label>
             )}
             <label>
               {t('queues.endDate')}
-              <input name="endDate" type="date" />
+              <Input name="endDate" type="date" />
             </label>
           </fieldset>
           <ErrorMessage message={errorKey ? t(errorKey) : ''} />
           <div className="dialog-actions">
-            <button type="button" className="button ghost" onClick={onClose}>
+            <Button variant="ghost" onClick={onClose}>
               {t('common.cancel')}
-            </button>
-            <button className="button primary" disabled={busy}>
+            </Button>
+            <Button type="submit" variant="primary" disabled={busy}>
               {busy ? t('queues.creating') : t('queues.create')}
-            </button>
+            </Button>
           </div>
         </form>
       </section>
@@ -152,7 +154,7 @@ export function EditEventDialog({
           />
           <label>
             {t('queues.newPassword')} <span className="optional">{t('queues.keepPassword')}</span>
-            <input
+            <Input
               name="password"
               type="password"
               autoComplete="new-password"
@@ -162,11 +164,11 @@ export function EditEventDialog({
           </label>
           <label>
             {t('queues.newStart')} <span className="optional">{t('common.optional')}</span>
-            <input name="startLocal" type="datetime-local" />
+            <Input name="startLocal" type="datetime-local" />
           </label>
           <label>
             {t('queues.newEnd')} <span className="optional">{t('queues.clearEnd')}</span>
-            <input
+            <Input
               name="endDate"
               type="date"
               defaultValue={hongKongInputDate(detail.queue.endAt)}
@@ -174,12 +176,12 @@ export function EditEventDialog({
           </label>
           <ErrorMessage message={errorKey ? t(errorKey) : ''} />
           <div className="dialog-actions">
-            <button type="button" className="button ghost" onClick={onClose}>
+            <Button variant="ghost" onClick={onClose}>
               {t('common.cancel')}
-            </button>
-            <button className="button primary" disabled={busy}>
+            </Button>
+            <Button type="submit" variant="primary" disabled={busy}>
               {busy ? t('queues.saving') : t('queues.save')}
-            </button>
+            </Button>
           </div>
         </form>
       </section>
@@ -222,7 +224,7 @@ export function ArchiveEventDialog({
         <p>{t('queues.archiveRouteHint')}</p>
         <label>
           {t('queues.typeConfirm', { name: detail.queue.name })}
-          <input
+          <Input
             autoFocus
             value={confirmationName}
             onChange={event => onConfirmationNameChange(event.target.value)}
@@ -230,16 +232,16 @@ export function ArchiveEventDialog({
         </label>
         <ErrorMessage message={errorKey ? t(errorKey) : ''} />
         <div className="dialog-actions">
-          <button className="button ghost" onClick={onClose}>
+          <Button variant="ghost" onClick={onClose}>
             {t('common.cancel')}
-          </button>
-          <button
-            className="button danger"
+          </Button>
+          <Button
+            variant="danger"
             disabled={busy || confirmationName !== detail.queue.name}
             onClick={onConfirm}
           >
             {busy ? t('queues.archiving') : t('queues.archiveTitle')}
-          </button>
+          </Button>
         </div>
       </section>
     </div>

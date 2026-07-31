@@ -39,9 +39,16 @@ describe('Easy Queue wording and simple actor UI', () => {
     expect(indexHtml).toContain(
       '<meta property="og:description" content="A simple event queue with live position updates." />',
     );
+    expect(screen.getByRole('heading', { name: 'Queueing, made clear.' })).toBeInTheDocument();
+    expect(screen.getByText('Share access')).toBeInTheDocument();
+    expect(screen.getByText('Customers join')).toBeInTheDocument();
+    expect(screen.getByText('Staff call')).toBeInTheDocument();
     expect(screen.getByLabelText('Event ID')).toBeInTheDocument();
     expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'password');
-    expect(screen.queryByRole('link', { name: 'Event Admin' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Event Admin sign-in' })).toHaveAttribute(
+      'href',
+      '/super-admin',
+    );
     expect(screen.queryByRole('button', { name: /create/i })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Business name')).not.toBeInTheDocument();
   });

@@ -4,6 +4,8 @@ import { Navigate, useLocation, useNavigate } from 'react-router';
 import { ApiError, apiRequest } from '../api/client';
 import { adminApi } from '../api/resources';
 import { Card, ErrorMessage, Shell } from '../components/Shell';
+import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
 import { AdminShell } from '../features/admin/AdminShell';
 import { AuditModule } from '../features/admin/modules/AuditModule';
 import { OverviewModule } from '../features/admin/modules/OverviewModule';
@@ -108,12 +110,12 @@ export function SuperAdminPage() {
             <form className="form-stack" onSubmit={login}>
               <label>
                 {t('superAdmin.key')}
-                <input name="key" type="password" autoComplete="current-password" required />
+                <Input name="key" type="password" autoComplete="current-password" required />
               </label>
               <ErrorMessage message={error ? t(error) : ''} />
-              <button className="button primary" disabled={busy}>
+              <Button type="submit" variant="primary" disabled={busy}>
                 {busy ? t('common.checking') : t('superAdmin.open')}
-              </button>
+              </Button>
             </form>
           </Card>
         </div>

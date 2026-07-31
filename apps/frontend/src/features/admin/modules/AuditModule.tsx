@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import type { AuditEvent, SuperAdminOverview } from '../../../types';
 import { Card } from '../../../components/Shell';
+import { Input } from '../../../components/ui/Input';
+import { Select } from '../../../components/ui/Select';
 import { dateTime, titleCase } from '../formatters';
 import { useAppI18n } from '../../../i18n/context';
 
@@ -38,7 +40,7 @@ export function AuditModule({
         <div className="audit-filters">
           <label>
             {t('audit.search')}
-            <input
+            <Input
               value={query}
               onChange={event => setQuery(event.target.value)}
               placeholder={t('audit.searchPlaceholder')}
@@ -46,14 +48,14 @@ export function AuditModule({
           </label>
           <label>
             {t('audit.event')}
-            <select value={queueId} onChange={event => setQueueId(event.target.value)}>
+            <Select value={queueId} onChange={event => setQueueId(event.target.value)}>
               <option value="">{t('audit.all')}</option>
               {overview.queues.map(queue => (
                 <option key={queue.queueId} value={queue.queueId}>
                   {queue.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
         </div>
         <div className="audit-list">

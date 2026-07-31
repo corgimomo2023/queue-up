@@ -312,12 +312,6 @@ export function CustomerPage() {
                   ? t('customer.next')
                   : t('customer.inLine')}
             </h2>
-            {currentTicket.status === 'served' && (
-              <div className="alert" role="status">
-                <strong>{t('customer.called')}</strong>
-              </div>
-            )}
-
             {currentTicket.status === 'waiting' && (
               <>
                 <div className="queue-stats" aria-label={t('customer.statsLabel')}>
